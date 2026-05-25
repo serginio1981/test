@@ -7,7 +7,26 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
+  <div id="login-overlay">
+    <div class="login-card">
+      <h2>Generador de Sonidos para Banda</h2>
+      <p class="login-sub">Sintetizador + secuenciador · Los Prisioneros</p>
+      <p class="login-msg">Inicia sesión con Google para entrar al estudio.</p>
+      <div id="gsi-button"></div>
+      <p id="auth-error" class="login-error"></p>
+      <p class="login-fineprint">
+        Tu nombre, correo y foto se usan solo para identificarte en tu navegador.
+        No se envían a ningún servidor de esta app.
+      </p>
+    </div>
+  </div>
+
   <header>
+    <div id="user-box" class="user-box" style="display: none">
+      <img id="user-avatar" class="user-avatar" alt="" referrerpolicy="no-referrer" />
+      <span id="user-name"></span>
+      <button id="sign-out" class="mini">Salir</button>
+    </div>
     <h1>Generador de Sonidos para Banda</h1>
     <p class="tagline">Sintetizador + secuenciador · «Estrechez de Corazón» — Los Prisioneros</p>
   </header>
@@ -90,9 +109,11 @@
     una interpretación editable pensada como punto de partida para el ensayo de tu banda.
   </footer>
 
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="js/synth.js"></script>
   <script src="js/song.js"></script>
   <script src="js/sequencer.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/auth.js"></script>
 </body>
 </html>
