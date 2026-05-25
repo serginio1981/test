@@ -5,7 +5,7 @@
 // Si lo dejas vacío, el login se omite (modo desarrollo).
 //
 // Cómo obtenerlo: README -> sección "Configurar el login de Google".
-const GOOGLE_CLIENT_ID = '';
+const GOOGLE_CLIENT_ID = '548451539953-pvdr0bv3hbpi1hsapva5cefqodvrkoth.apps.googleusercontent.com';
 
 const AUTH_STORE_KEY = 'band-sound-generator:user';
 
