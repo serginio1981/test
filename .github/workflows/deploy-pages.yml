@@ -1,7 +1,7 @@
 name: Deploy band sound generator to GitHub Pages
 
 # Publica la app estática de band-sound-generator/ en GitHub Pages.
-# Requisito (una sola vez): en Settings -> Pages, elegir Source = "GitHub Actions".
+# Activa Pages automáticamente (enablement: true) la primera vez que se ejecuta.
 
 on:
   push:
@@ -34,6 +34,8 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
