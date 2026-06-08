@@ -26,9 +26,34 @@ function chordNotes(name) {
   return c ? c.notes.slice() : [];
 }
 
+const DEFAULT_SONG_NAME = 'Estrechez de Corazón';
+
+// Patrón de batería rock 4/4: kick a 1 y 3, snare a 2 y 4, hi-hat en cada corchea.
+const DEFAULT_DRUMS = {
+  kick: [
+    true, false, false, false, true, false, false, false,
+    true, false, false, false, true, false, false, false,
+    true, false, false, false, true, false, false, false,
+    true, false, false, false, true, false, false, false,
+  ],
+  snare: [
+    false, false, true, false, false, false, true, false,
+    false, false, true, false, false, false, true, false,
+    false, false, true, false, false, false, true, false,
+    false, false, true, false, false, false, true, false,
+  ],
+  hihat: [
+    true, true, true, true, true, true, true, true,
+    true, true, true, true, true, true, true, true,
+    true, true, true, true, true, true, true, true,
+    true, true, true, true, true, true, true, true,
+  ],
+};
+
 const DEFAULT_SONG = {
   bpm: 144,
   steps: 32,
+  drums: DEFAULT_DRUMS,
   // Bajo motor en corcheas con saltos de octava (null = silencio).
   bass: [
     40, null, 40, 40, 35, null, 40, 43,
@@ -73,4 +98,6 @@ const DEFAULT_PATCHES = {
     cutoff: 1300, resonance: 4, filterEnv: 900, filterDecay: 0.5,
     volume: 0.38, delaySend: 0.2,
   },
+  // La batería usa DEFAULT_DRUM_PARAMS como base; se pueden añadir overrides aquí.
+  drums: {},
 };

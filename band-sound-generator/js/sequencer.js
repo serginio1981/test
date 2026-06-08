@@ -64,6 +64,13 @@ class Sequencer {
       const notes = chordNotes(s.chords[step / stepsPerBar]);
       if (notes.length) this.synths.chord.playChord(notes, time, d * stepsPerBar * 0.96);
     }
+
+    const dr = s.drums;
+    if (dr && this.synths.drums) {
+      if (dr.kick && dr.kick[step]) this.synths.drums.kick(time);
+      if (dr.snare && dr.snare[step]) this.synths.drums.snare(time);
+      if (dr.hihat && dr.hihat[step]) this.synths.drums.hihat(time);
+    }
   }
 
   // Devuelve el paso visible más reciente ya sonando, o null.

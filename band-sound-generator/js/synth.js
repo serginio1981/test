@@ -223,3 +223,149 @@ class Synth {
     this.voices.clear();
   }
 }
+
+// ---- Batería sintetizada -------------------------------------------------
+// Tres voces (kick, snare, hi-hat) totalmente sintetizadas — sin samples.
+// Comparten el bus de audio del motor con los demás instrumentos.
+
+const DEFAULT_DRUM_PARAMS = {
+  kickStart: 140,
+  kickEnd: 50,
+  kickPitchDecay: 0.05,
+  kickDecay: 0.3,
+  kickLevel: 0.95,
+  snareTone: 200,
+  snareDecay: 0.18,
+  snareNoise: 0.6,
+  snareBody: 0.45,
+  hihatHP: 7000,
+  hihatDecay: 0.06,
+  hihatLevel: 0.32,
+  volume: 0.85,
+  delaySend: 0,
+};
+
+class Drums {
+  constructor(engine, params) {
+    this.engine = engine;
+    this.ctx = engine.ctx;
+    this.params = Object.assign({}, DEFAULT_DRUM_PARAMS, params || {});
+    this.muted = false;
+
+    this.output = this.ctx.createGain();
+    this.output.gain.value = this.params.volume;
+    this.output.connect(engine.masterGain);
+
+    this.send = this.ctx.createGain();
+    this.send.gain.value = this.params.delaySend;
+    this.output.connect(this.send);
+    this.send.connect(engine.delayInput);
+  }
+
+  refresh() {
+    this.output.gain.value = this.params.volume;
+    this.send.gain.value = this.params.delaySend;
+  }
+
+  setParam(name, value) {
+    this.params[name] = value;
+    if (name === 'volume') this.output.gain.value = value;
+    if (name === 'delaySend') this.send.gain.value = value;
+  }
+
+  _noiseBuffer(seconds) {
+    const len = Math.max(1, Math.floor(this.ctx.sampleRate * seconds));
+    const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    return buf;
+  }
+
+  kick(time) {
+    if (this.muted) return;
+    const p = this.params;
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    const amp = this.ctx.createGain();
+    osc.connect(amp);
+    amp.connect(this.output);
+    osc.frequency.setValueAtTime(p.kickStart, time);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(p.kickEnd, 20), time + p.kickPitchDecay);
+    amp.gain.setValueAtTime(0, time);
+    amp.gain.linearRampToValueAtTime(p.kickLevel, time + 0.003);
+    amp.gain.exponentialRampToValueAtTime(0.001, time + p.kickDecay);
+    osc.start(time);
+    const stopAt = time + p.kickDecay + 0.05;
+    osc.stop(stopAt);
+    osc.onended = () => {
+      try { osc.disconnect(); amp.disconnect(); } catch (e) { /* noop */ }
+    };
+  }
+
+  snare(time) {
+    if (this.muted) return;
+    const p = this.params;
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this._noiseBuffer(p.snareDecay + 0.05);
+    const hp = this.ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 1200;
+    const nGain = this.ctx.createGain();
+    noise.connect(hp);
+    hp.connect(nGain);
+    nGain.connect(this.output);
+    nGain.gain.setValueAtTime(0, time);
+    nGain.gain.linearRampToValueAtTime(p.snareNoise, time + 0.002);
+    nGain.gain.exponentialRampToValueAtTime(0.001, time + p.snareDecay);
+
+    const osc = this.ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(p.snareTone, time);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(p.snareTone * 0.6, 60), time + p.snareDecay * 0.6);
+    const oGain = this.ctx.createGain();
+    osc.connect(oGain);
+    oGain.connect(this.output);
+    oGain.gain.setValueAtTime(0, time);
+    oGain.gain.linearRampToValueAtTime(p.snareBody, time + 0.002);
+    oGain.gain.exponentialRampToValueAtTime(0.001, time + p.snareDecay * 0.6);
+
+    const stopAt = time + p.snareDecay + 0.06;
+    noise.start(time);
+    noise.stop(stopAt);
+    osc.start(time);
+    osc.stop(stopAt);
+    osc.onended = () => {
+      try { noise.disconnect(); hp.disconnect(); nGain.disconnect(); osc.disconnect(); oGain.disconnect(); } catch (e) { /* noop */ }
+    };
+  }
+
+  hihat(time) {
+    if (this.muted) return;
+    const p = this.params;
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this._noiseBuffer(p.hihatDecay + 0.04);
+    const hp = this.ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = p.hihatHP;
+    const gain = this.ctx.createGain();
+    noise.connect(hp);
+    hp.connect(gain);
+    gain.connect(this.output);
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(p.hihatLevel, time + 0.001);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + p.hihatDecay);
+    const stopAt = time + p.hihatDecay + 0.04;
+    noise.start(time);
+    noise.stop(stopAt);
+    noise.onended = () => {
+      try { noise.disconnect(); hp.disconnect(); gain.disconnect(); } catch (e) { /* noop */ }
+    };
+  }
+
+  // Métodos para uniformidad con Synth (los disparos son cortos y sin sostén).
+  allOff() {}
+  noteOn() {}
+  noteOff() {}
+  playNote() {}
+  playChord() {}
+}
