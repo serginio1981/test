@@ -10,7 +10,10 @@ App web autónoma (HTML + JavaScript + Web Audio API, sin dependencias ni *build
 - **Secuenciador** de 32 pasos (4 compases en 4/4) con planificador *lookahead* sobre el reloj del `AudioContext`. Pistas de bajo, *lead* y *pad* de acordes.
 - **Editor tipo piano roll** para bajo y *lead*; selector de acorde por compás (Em, C, G, D, Am, Bm, etc.).
 - **Teclado tocable** con ratón, pantalla táctil o teclado del PC.
-- **Persistencia** automática de la canción y los *patches* en `localStorage`. Botón «Restablecer» para volver al estado original.
+- **Batería sintetizada** (kick, snare, hi-hat) con grid editable de 32 pasos. Patch de batería expuesto en el panel del sintetizador.
+- **Grabación de la mezcla** con `MediaRecorder`: pulsa ● Grabar y descarga un WebM/Opus al detener.
+- **Múltiples canciones** guardadas por nombre en `localStorage`: selector, «Guardar como…», «Eliminar».
+- **Persistencia** automática de la canción y los *patches*. Botón «Restablecer» para volver al patrón original.
 - **Login con Google** (opcional) antes de entrar al estudio, con tu nombre y foto visibles en la cabecera.
 
 ## Uso rápido
@@ -40,12 +43,14 @@ python3 -m http.server 8000
 | Acción                       | Cómo                                                                       |
 | ---------------------------- | -------------------------------------------------------------------------- |
 | Reproducir / detener         | Botón ▶ Reproducir · barra espaciadora                                     |
-| Editar notas                 | Clic en cualquier celda del piano roll (toca para añadir, otra vez para quitar) |
+| Grabar la mezcla             | Botón ● Grabar (auto-arranca el secuenciador). Pulsa de nuevo para detener y descargar. |
+| Editar notas                 | Clic en cualquier celda del piano roll o de la batería (toca para añadir, otra vez para quitar) |
 | Cambiar acorde del compás    | Menú desplegable bajo «Acordes»                                            |
+| Cambiar de canción           | Selector «Canción» · «Guardar como…» crea una copia · «Eliminar» borra la actual |
 | Tocar el teclado             | Ratón/toque · fila `Z X C…` octava baja · fila `Q W E…` octava alta        |
 | Cambiar octava               | Botones «– Octava / Octava +» o flechas `← →`                              |
-| Silenciar / limpiar pista    | Botones de cada pista                                                      |
-| Editar timbre                | Pestañas Teclado / Bajo / Lead / Acordes en el panel «Sintetizador»        |
+| Silenciar / limpiar pista    | Botones de cada pista (incluida la batería)                                |
+| Editar timbre                | Pestañas Teclado / Bajo / Lead / Acordes / Batería en el panel «Sintetizador» |
 
 ## Arquitectura
 
@@ -58,7 +63,8 @@ band-sound-generator/
     ├── synth.js       # AudioEngine + clase Synth (voces, envolventes, filtro, delay)
     ├── song.js        # Datos de la canción, biblioteca de acordes y patches por defecto
     ├── sequencer.js   # Planificador con lookahead y cola de pasos visibles
-    ├── app.js         # Interfaz: piano roll, acordes, panel de síntesis, teclado, persistencia
+    ├── recorder.js    # Captura la mezcla con MediaRecorder y la descarga
+    ├── app.js         # Interfaz: piano roll, batería, acordes, panel, teclado, canciones
     └── auth.js        # Login con Google Identity Services (opcional, configurable)
 ```
 
