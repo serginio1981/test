@@ -60,6 +60,19 @@ main {
   gap: 18px;
 }
 
+/* En escritorios anchos aprovecha todo el ancho del navegador. */
+@media (min-width: 1100px) {
+  main {
+    max-width: min(100%, 1800px);
+    padding: 18px 32px;
+    gap: 22px;
+  }
+  footer {
+    max-width: min(100%, 1800px);
+    padding: 0 32px;
+  }
+}
+
 .panel {
   background: var(--panel-solid);
   border: 1px solid var(--line);
