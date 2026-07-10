@@ -28,7 +28,33 @@ mayordomo británico, sobre una interfaz HUD con reactor arc animado.
   micrófono y el wake word solo son realistas en un dispositivo físico).
 - Una clave de API de Anthropic ([console.anthropic.com](https://console.anthropic.com)).
 
-## Compilar y ejecutar
+## Instalar sin Mac (Windows + Sideloadly)
+
+No hace falta Mac: cada push a la rama del proyecto (o el botón *Run workflow*)
+hace que **GitHub Actions compile un `Jarvis.ipa` sin firmar** en un runner
+macOS. Luego lo firmas e instalas tú desde Windows con tu Apple ID gratuito.
+
+**1. Descarga el `.ipa`:**
+
+1. En GitHub: pestaña **Actions** → workflow **Build Jarvis IPA** → último run verde ✅.
+2. Abajo, en **Artifacts**, descarga `Jarvis-ipa` y descomprime el zip → obtienes `Jarvis.ipa`.
+
+**2. Instálalo desde tu PC con Windows:**
+
+1. Instala [iTunes](https://www.apple.com/itunes/) (hace falta por los drivers de Apple) y [Sideloadly](https://sideloadly.io).
+2. Conecta el iPhone por USB y desbloquéalo (toca "Confiar" si pregunta).
+3. Abre Sideloadly: arrastra `Jarvis.ipa`, escribe tu **Apple ID** y pulsa **Start** (la contraseña se envía solo a Apple; si tienes 2FA te pedirá el código).
+
+**3. En el iPhone (solo la primera vez):**
+
+1. Ajustes → General → **VPN y gestión de dispositivos** → toca tu Apple ID → **Confiar**.
+2. Ajustes → Privacidad y seguridad → **Modo de desarrollador** → activar (pide reiniciar).
+
+**Limitaciones del Apple ID gratuito:** la app caduca a los **7 días** — se
+vuelve a instalar desde Sideloadly en 2 minutos, sin recompilar nada — y solo
+puedes tener 3 apps instaladas así a la vez.
+
+## Compilar y ejecutar (con Mac)
 
 El proyecto Xcode se genera con [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 (el `.xcodeproj` no está en el repo):
