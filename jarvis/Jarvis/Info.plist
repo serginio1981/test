@@ -34,5 +34,20 @@
 	<string>Jarvis puede crear recordatorios cuando se lo pidas.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Jarvis usa tu ubicación para darte el tiempo local.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Jarvis busca en tus contactos para enviar mensajes y correos a quien le pidas.</string>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>Jarvis reproduce música de Apple Music cuando se lo pides.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.serginio.jarvis.auth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>jarvis-auth</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

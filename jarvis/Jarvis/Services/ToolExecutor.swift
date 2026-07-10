@@ -66,6 +66,111 @@ enum JarvisTools {
                 "required": .array([.string("url")]),
             ])
         ),
+        ToolDefinition(
+            name: "read_emails",
+            description: "Lee los últimos correos de la bandeja de entrada de Outlook del usuario y devuelve remitente, asunto, fecha y un extracto.",
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "count": .object([
+                        "type": .string("integer"),
+                        "description": .string("Número de correos a leer, entre 1 y 10 (por defecto 5)"),
+                    ]),
+                    "unread_only": .object([
+                        "type": .string("boolean"),
+                        "description": .string("Si es true, solo correos no leídos (por defecto false)"),
+                    ]),
+                ]),
+            ])
+        ),
+        ToolDefinition(
+            name: "send_email",
+            description: "Envía un correo desde la cuenta de Outlook del usuario. Confirma siempre con el usuario el destinatario y el contenido antes de enviar.",
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "to": .object([
+                        "type": .string("string"),
+                        "description": .string("Dirección de correo o nombre de un contacto de la agenda"),
+                    ]),
+                    "subject": .object([
+                        "type": .string("string"),
+                        "description": .string("Asunto del correo"),
+                    ]),
+                    "body": .object([
+                        "type": .string("string"),
+                        "description": .string("Cuerpo del correo en texto plano"),
+                    ]),
+                ]),
+                "required": .array([.string("to"), .string("subject"), .string("body")]),
+            ])
+        ),
+        ToolDefinition(
+            name: "play_music",
+            description: "Busca y reproduce música en Apple Music: una canción, un artista, un álbum o una playlist de la biblioteca del usuario.",
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "query": .object([
+                        "type": .string("string"),
+                        "description": .string("Qué reproducir, p. ej. «Back in Black de AC/DC»"),
+                    ]),
+                    "type": .object([
+                        "type": .string("string"),
+                        "enum": .array([.string("song"), .string("artist"), .string("album"), .string("playlist")]),
+                        "description": .string("Tipo de búsqueda (por defecto song)"),
+                    ]),
+                ]),
+                "required": .array([.string("query")]),
+            ])
+        ),
+        ToolDefinition(
+            name: "control_music",
+            description: "Controla la reproducción de música en curso.",
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "action": .object([
+                        "type": .string("string"),
+                        "enum": .array([.string("pause"), .string("resume"), .string("next"), .string("previous")]),
+                        "description": .string("Acción de reproducción"),
+                    ]),
+                ]),
+                "required": .array([.string("action")]),
+            ])
+        ),
+        ToolDefinition(
+            name: "send_whatsapp",
+            description: "Prepara un mensaje de WhatsApp para un contacto: abre WhatsApp con el mensaje escrito y el usuario solo tiene que pulsar enviar. Acepta nombre de contacto o número de teléfono.",
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "contact": .object([
+                        "type": .string("string"),
+                        "description": .string("Nombre del contacto en la agenda o número de teléfono"),
+                    ]),
+                    "message": .object([
+                        "type": .string("string"),
+                        "description": .string("Texto del mensaje"),
+                    ]),
+                ]),
+                "required": .array([.string("contact"), .string("message")]),
+            ])
+        ),
+        ToolDefinition(
+            name: "request_uber",
+            description: "Prepara un viaje en Uber hasta un destino: abre Uber con la recogida en la ubicación actual y el destino fijado; el usuario confirma el pedido en la app.",
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "destination": .object([
+                        "type": .string("string"),
+                        "description": .string("Destino en texto libre, p. ej. «aeropuerto de Barajas»"),
+                    ]),
+                ]),
+                "required": .array([.string("destination")]),
+            ])
+        ),
     ]
 }
 
@@ -75,6 +180,9 @@ enum JarvisTools {
 final class ToolExecutor {
     private let weatherService = WeatherService()
     private let remindersService = RemindersService()
+    private let outlookService = OutlookService()
+    private let musicService = MusicService()
+    private let contactsService = ContactsService()
 
     func execute(name: String, input: [String: JSONValue]) async throws -> String {
         switch name {
@@ -96,8 +204,97 @@ final class ToolExecutor {
             )
         case "open_url":
             return try await openURL(input["url"]?.stringValue)
+        case "read_emails":
+            let count = Int(input["count"]?.doubleValue ?? 5)
+            return try await outlookService.readInbox(
+                count: count,
+                unreadOnly: input["unread_only"]?.boolValue ?? false
+            )
+        case "send_email":
+            return try await sendEmail(input: input)
+        case "play_music":
+            guard let query = input["query"]?.stringValue, !query.isEmpty else {
+                throw ToolError("Falta qué reproducir.")
+            }
+            let type = MusicService.SearchType(rawValue: input["type"]?.stringValue ?? "song") ?? .song
+            return try await musicService.play(query: query, type: type)
+        case "control_music":
+            guard let action = input["action"]?.stringValue else {
+                throw ToolError("Falta la acción de reproducción.")
+            }
+            return try await musicService.control(action: action)
+        case "send_whatsapp":
+            return try await sendWhatsApp(input: input)
+        case "request_uber":
+            guard let destination = input["destination"]?.stringValue, !destination.isEmpty else {
+                throw ToolError("Falta el destino del viaje.")
+            }
+            return try await DeepLinks.requestUber(destination: destination)
         default:
             throw ToolError("Herramienta desconocida: \(name)")
+        }
+    }
+
+    // MARK: - Correo
+
+    private func sendEmail(input: [String: JSONValue]) async throws -> String {
+        guard let to = input["to"]?.stringValue, !to.isEmpty else {
+            throw ToolError("Falta el destinatario del correo.")
+        }
+        guard let subject = input["subject"]?.stringValue, !subject.isEmpty else {
+            throw ToolError("Falta el asunto del correo.")
+        }
+        guard let body = input["body"]?.stringValue, !body.isEmpty else {
+            throw ToolError("Falta el cuerpo del correo.")
+        }
+
+        // Si no es una dirección, buscar el email del contacto en la agenda.
+        var recipient = to
+        if !to.contains("@") {
+            switch try await contactsService.findContact(named: to) {
+            case .unique(let name, _, let email):
+                guard let email else {
+                    throw ToolError("El contacto \(name) no tiene correo en la agenda.")
+                }
+                recipient = email
+            case .ambiguous(let names):
+                throw ToolError("He encontrado varios contactos: \(names.joined(separator: ", ")). ¿A cuál se refiere?")
+            case .none:
+                throw ToolError("No encuentro a «\(to)» en la agenda.")
+            }
+        }
+        return try await outlookService.sendMail(to: recipient, subject: subject, body: body)
+    }
+
+    // MARK: - WhatsApp
+
+    private func sendWhatsApp(input: [String: JSONValue]) async throws -> String {
+        guard let contact = input["contact"]?.stringValue, !contact.isEmpty else {
+            throw ToolError("Falta el destinatario del mensaje.")
+        }
+        guard let message = input["message"]?.stringValue, !message.isEmpty else {
+            throw ToolError("Falta el texto del mensaje.")
+        }
+
+        // ¿Es un número de teléfono directo? (mayoría de dígitos)
+        let digitCount = contact.filter(\.isNumber).count
+        if digitCount >= 7 && digitCount * 2 >= contact.count {
+            guard let number = ContactsService.normalizePhoneForWhatsApp(contact) else {
+                throw ToolError("Ese número de teléfono no parece válido.")
+            }
+            return try await DeepLinks.openWhatsApp(number: number, recipientName: contact, message: message)
+        }
+
+        switch try await contactsService.findContact(named: contact) {
+        case .unique(let name, let phone, _):
+            guard let phone, let number = ContactsService.normalizePhoneForWhatsApp(phone) else {
+                throw ToolError("El contacto \(name) no tiene teléfono en la agenda.")
+            }
+            return try await DeepLinks.openWhatsApp(number: number, recipientName: name, message: message)
+        case .ambiguous(let names):
+            throw ToolError("He encontrado varios contactos: \(names.joined(separator: ", ")). ¿A cuál se refiere?")
+        case .none:
+            throw ToolError("No encuentro a «\(contact)» en la agenda.")
         }
     }
 

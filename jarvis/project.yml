@@ -20,6 +20,11 @@ targets:
         NSSpeechRecognitionUsageDescription: "Jarvis convierte tu voz en texto para entender lo que dices."
         NSRemindersFullAccessUsageDescription: "Jarvis puede crear recordatorios cuando se lo pidas."
         NSLocationWhenInUseUsageDescription: "Jarvis usa tu ubicación para darte el tiempo local."
+        NSContactsUsageDescription: "Jarvis busca en tus contactos para enviar mensajes y correos a quien le pidas."
+        NSAppleMusicUsageDescription: "Jarvis reproduce música de Apple Music cuando se lo pides."
+        CFBundleURLTypes:
+          - CFBundleURLName: com.serginio.jarvis.auth
+            CFBundleURLSchemes: [jarvis-auth]
     settings:
       base:
         SWIFT_VERSION: "5.9"

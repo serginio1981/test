@@ -58,6 +58,14 @@ enum JSONValue: Codable, Equatable {
         default: return nil
         }
     }
+
+    var boolValue: Bool? {
+        switch self {
+        case .bool(let value): return value
+        case .string(let value): return Bool(value.lowercased())
+        default: return nil
+        }
+    }
 }
 
 // MARK: - Bloques de contenido

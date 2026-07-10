@@ -14,6 +14,12 @@ struct SettingsView: View {
     @State private var testResult: TestResult?
     @State private var isTesting = false
 
+    @State private var msClientId = UserDefaults.standard.string(forKey: MicrosoftAuthService.clientIdDefaultsKey) ?? ""
+    @State private var msAccountName = MicrosoftAuthService.shared.accountName
+    @State private var isMsSignedIn = MicrosoftAuthService.shared.isSignedIn
+    @State private var isSigningIn = false
+    @State private var msError: String?
+
     private enum TestResult: Equatable {
         case success
         case failure(String)
@@ -31,6 +37,7 @@ struct SettingsView: View {
             Form {
                 apiKeySection
                 modelSection
+                microsoftSection
                 voiceSection
                 testSection
                 aboutSection
@@ -101,6 +108,56 @@ struct SettingsView: View {
         }
     }
 
+    private var microsoftSection: some View {
+        Section {
+            TextField("Application (client) ID", text: $msClientId)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .onChange(of: msClientId) { _, newValue in
+                    UserDefaults.standard.set(
+                        newValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                        forKey: MicrosoftAuthService.clientIdDefaultsKey
+                    )
+                }
+
+            if isMsSignedIn {
+                HStack {
+                    Label(msAccountName ?? "Sesión iniciada", systemImage: "checkmark.seal.fill")
+                        .foregroundStyle(.green)
+                        .lineLimit(1)
+                    Spacer()
+                    Button("Cerrar sesión", role: .destructive) {
+                        MicrosoftAuthService.shared.signOut()
+                        refreshMicrosoftState()
+                    }
+                }
+            } else {
+                Button {
+                    signInWithMicrosoft()
+                } label: {
+                    if isSigningIn {
+                        HStack {
+                            ProgressView()
+                            Text("Iniciando sesión…")
+                        }
+                    } else {
+                        Text("Iniciar sesión con Microsoft")
+                    }
+                }
+                .disabled(isSigningIn || msClientId.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+
+            if let msError {
+                Label(msError, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+            }
+        } header: {
+            Text("Outlook (Microsoft)")
+        } footer: {
+            Text("Registra una app gratuita en Azure y pega aquí su Application ID. Instrucciones en el README del proyecto.")
+        }
+    }
+
     private var voiceSection: some View {
         Section("Reconocimiento de voz") {
             Picker("Idioma", selection: $locale) {
@@ -149,6 +206,27 @@ struct SettingsView: View {
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
         }
+    }
+
+    private func signInWithMicrosoft() {
+        isSigningIn = true
+        msError = nil
+        Task {
+            do {
+                try await MicrosoftAuthService.shared.signIn()
+            } catch let error as ToolError {
+                msError = error.message
+            } catch {
+                msError = error.localizedDescription
+            }
+            isSigningIn = false
+            refreshMicrosoftState()
+        }
+    }
+
+    private func refreshMicrosoftState() {
+        isMsSignedIn = MicrosoftAuthService.shared.isSignedIn
+        msAccountName = MicrosoftAuthService.shared.accountName
     }
 
     private func testConnection() {

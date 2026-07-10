@@ -1,13 +1,14 @@
 import Foundation
 import Security
 
-/// Almacenamiento de la API key de Anthropic en el llavero del sistema.
-/// La clave nunca se guarda en UserDefaults ni se registra en logs.
+/// Almacenamiento de secretos en el llavero del sistema (API key de Anthropic,
+/// tokens de Microsoft...). Nunca en UserDefaults ni en logs.
 enum KeychainStore {
     private static let service = "com.serginio.jarvis"
-    private static let account = "anthropic-api-key"
+    private static let apiKeyAccount = "anthropic-api-key"
+    static let microsoftTokensAccount = "microsoft-tokens"
 
-    private static var baseQuery: [String: Any] {
+    private static func baseQuery(account: String) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -15,37 +16,45 @@ enum KeychainStore {
         ]
     }
 
-    static func saveAPIKey(_ key: String) {
-        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+    // MARK: - API genérica
+
+    static func save(_ value: String, account: String) {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let data = trimmed.data(using: .utf8) else {
-            deleteAPIKey()
+            delete(account: account)
             return
         }
-        SecItemDelete(baseQuery as CFDictionary)
-        var query = baseQuery
+        SecItemDelete(baseQuery(account: account) as CFDictionary)
+        var query = baseQuery(account: account)
         query[kSecValueData as String] = data
         query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         SecItemAdd(query as CFDictionary, nil)
     }
 
-    static func readAPIKey() -> String? {
-        var query = baseQuery
+    static func read(account: String) -> String? {
+        var query = baseQuery(account: account)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         guard status == errSecSuccess,
               let data = result as? Data,
-              let key = String(data: data, encoding: .utf8),
-              !key.isEmpty else {
+              let value = String(data: data, encoding: .utf8),
+              !value.isEmpty else {
             return nil
         }
-        return key
+        return value
     }
 
-    static func deleteAPIKey() {
-        SecItemDelete(baseQuery as CFDictionary)
+    static func delete(account: String) {
+        SecItemDelete(baseQuery(account: account) as CFDictionary)
     }
+
+    // MARK: - API key de Anthropic (mismo account de siempre: compatible)
+
+    static func saveAPIKey(_ key: String) { save(key, account: apiKeyAccount) }
+    static func readAPIKey() -> String? { read(account: apiKeyAccount) }
+    static func deleteAPIKey() { delete(account: apiKeyAccount) }
 
     static var hasAPIKey: Bool {
         readAPIKey() != nil

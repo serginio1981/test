@@ -14,6 +14,10 @@ mayordomo británico, sobre una interfaz HUD con reactor arc animado.
   - Tiempo actual vía [Open-Meteo](https://open-meteo.com) — «¿qué tiempo hace?»
   - Crear recordatorios (app Recordatorios) — «recuérdame llamar a mamá mañana a las nueve»
   - Abrir páginas web — «abre google.com»
+  - **Correo de Outlook** (leer y enviar) — «¿tengo correos nuevos?», «envía un correo a Ana» (requiere configurar Azure, ver abajo)
+  - **Apple Music** — «pon Back in Black», «música de Queen», «pausa», «siguiente» (requiere suscripción a Apple Music)
+  - **WhatsApp** — «envía un WhatsApp a Juan diciendo que llego tarde»: busca a Juan en tus contactos y abre WhatsApp con el mensaje escrito; tú pulsas enviar (WhatsApp no permite envío automático en cuentas personales)
+  - **Uber** — «pide un Uber al aeropuerto»: abre Uber con el destino fijado; tú confirmas el viaje
 - **HUD estilo Iron Man**: reactor arc dibujado con Canvas que cambia de color
   según el estado (azul escuchando, dorado pensando, cian hablando) y pulsa
   con tu voz.
@@ -82,6 +86,33 @@ La voz por defecto de iOS es robótica. Descarga una voz mejorada en
 *Ajustes → Accesibilidad → Contenido hablado → Voces → Español* (por ejemplo,
 una voz «Premium»): la app elige automáticamente la de mayor calidad instalada.
 
+## Configurar el correo de Outlook (Azure, gratis, ~5 minutos)
+
+Para que Jarvis pueda leer y enviar tu correo necesita una "app" registrada en
+Microsoft Azure (es gratis y no requiere suscripción):
+
+1. Entra en [portal.azure.com](https://portal.azure.com) con tu cuenta Microsoft
+   (vale la personal de outlook.com/hotmail) → busca **Microsoft Entra ID** →
+   **App registrations** → **New registration**.
+2. Nombre: `Jarvis`. En *Supported account types* elige
+   **"Personal Microsoft accounts only"**.
+3. En *Redirect URI* selecciona la plataforma **"Mobile and desktop applications"**
+   (si no aparece aquí, añádela después en **Authentication → Add a platform**) y
+   escribe como URI personalizada: `jarvis-auth://callback`
+4. Pulsa **Register** y copia el **Application (client) ID** (un GUID).
+5. En **Authentication**, baja hasta *Advanced settings* y activa
+   **"Allow public client flows" = Yes** → Save.
+6. En Jarvis: Ajustes ⚙️ → sección **Outlook (Microsoft)** → pega el Application ID
+   → **Iniciar sesión con Microsoft** → acepta los permisos (leer y enviar tu correo).
+
+La sesión se guarda cifrada en el llavero del iPhone y se renueva sola; solo
+tendrás que volver a iniciarla si pasas ~3 meses sin usarla.
+
+**Notas sobre las demás integraciones:** WhatsApp y Uber se abren mediante
+enlaces universales (si la app no está instalada se abre la versión web); la
+música requiere suscripción a Apple Music y usa la app Música del sistema.
+Los permisos de contactos y biblioteca musical se piden la primera vez que se usan.
+
 ## Arquitectura
 
 MVVM sin dependencias externas (solo frameworks de Apple):
@@ -97,7 +128,13 @@ Jarvis/
 │   ├── ToolExecutor.swift       # despacho de tool_use → tool_result
 │   ├── WeatherService.swift     # CoreLocation + Open-Meteo
 │   ├── RemindersService.swift   # EventKit
-│   ├── KeychainStore.swift      # clave de API en el llavero
+│   ├── MusicService.swift       # iTunes Search API + MediaPlayer (Apple Music)
+│   ├── ContactsService.swift    # búsqueda difusa en la agenda (CNContactStore)
+│   ├── DeepLinks.swift          # WhatsApp (wa.me) y Uber (m.uber.com/ul)
+│   ├── Microsoft/
+│   │   ├── MicrosoftAuthService.swift  # OAuth PKCE sin MSAL (ASWebAuthenticationSession)
+│   │   └── OutlookService.swift        # Microsoft Graph: leer y enviar correo
+│   ├── KeychainStore.swift      # secretos en el llavero (API key, tokens Microsoft)
 │   └── AudioSessionManager.swift
 ├── ViewModels/
 │   └── AssistantViewModel.swift # máquina de estados y orquestación
