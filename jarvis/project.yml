@@ -1,0 +1,29 @@
+name: Jarvis
+options:
+  bundleIdPrefix: com.serginio
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+targets:
+  Jarvis:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources: [Jarvis]
+    info:
+      path: Jarvis/Info.plist
+      properties:
+        CFBundleDisplayName: Jarvis
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSMicrophoneUsageDescription: "Jarvis necesita el micrófono para escuchar tus órdenes de voz."
+        NSSpeechRecognitionUsageDescription: "Jarvis convierte tu voz en texto para entender lo que dices."
+        NSRemindersFullAccessUsageDescription: "Jarvis puede crear recordatorios cuando se lo pidas."
+        NSLocationWhenInUseUsageDescription: "Jarvis usa tu ubicación para darte el tiempo local."
+    settings:
+      base:
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: false
+        INFOPLIST_FILE: Jarvis/Info.plist
+        CODE_SIGN_STYLE: Automatic
