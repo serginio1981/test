@@ -119,6 +119,7 @@ final class OutlookService {
                 throw ToolError("No se pudo conectar con Microsoft.")
             }
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            JarvisLog.shared.info("Graph: \(method) \(url.path) → HTTP \(status)")
             return (data, status)
         }
 

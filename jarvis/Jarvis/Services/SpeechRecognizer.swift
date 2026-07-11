@@ -95,6 +95,7 @@ final class SpeechRecognizer {
         audioEngine.prepare()
         try audioEngine.start()
         isRunning = true
+        JarvisLog.shared.info("STT: escuchando en modo \(mode == .wakeWord ? "wake word" : "comando")")
 
         startRecognitionTask()
         scheduleModeTimers()
@@ -166,12 +167,13 @@ final class SpeechRecognizer {
             }
         }
 
-        if error != nil {
+        if let error {
             switch mode {
             case .wakeWord:
                 // Las tareas caducan (~1 min) o fallan puntualmente: rearmar.
                 startRecognitionTask()
             case .command:
+                JarvisLog.shared.warn("STT: la tarea de comando terminó con error: \(error.localizedDescription)")
                 finishCommand()
             }
         }
@@ -219,6 +221,7 @@ final class SpeechRecognizer {
     private func finishCommand() {
         guard mode == .command, isRunning else { return }
         let transcript = latestTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+        JarvisLog.shared.info("STT: fin de comando (\(transcript.count) caracteres)")
         stop()
         onCommandFinished?(transcript)
     }

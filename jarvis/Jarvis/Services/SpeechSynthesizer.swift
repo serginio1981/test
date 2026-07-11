@@ -21,6 +21,7 @@ final class SpeechSynthesizer: NSObject, AVSpeechSynthesizerDelegate {
         let sanitized = Self.sanitizeForSpeech(text)
         guard !sanitized.isEmpty else { return }
 
+        JarvisLog.shared.info("TTS: hablando (\(sanitized.count) caracteres)")
         stop()
 
         let utterance = AVSpeechUtterance(string: sanitized)

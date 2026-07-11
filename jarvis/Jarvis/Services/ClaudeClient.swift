@@ -46,9 +46,11 @@ final class ClaudeClient: MessagesAPIClient {
         }
 
         var messages = history
+        JarvisLog.shared.info("Claude: enviando petición (\(messages.count) mensajes)")
 
-        for _ in 0..<Self.maxToolIterations {
+        for iteration in 0..<Self.maxToolIterations {
             let response = try await post(messages: messages, apiKey: apiKey)
+            JarvisLog.shared.info("Claude: respuesta \(iteration + 1), stop_reason=\(response.stopReason ?? "?")")
 
             // El contenido del asistente se reenvía tal cual (incluidos los
             // bloques tool_use) para mantener el contrato del API.
@@ -60,10 +62,12 @@ final class ClaudeClient: MessagesAPIClient {
 
             var results: [ContentBlock] = []
             for toolUse in response.toolUses {
+                JarvisLog.shared.info("Tool: \(toolUse.name)(\(toolUse.input.keys.sorted().joined(separator: ", ")))")
                 do {
                     let output = try await toolExecutor.execute(name: toolUse.name, input: toolUse.input)
                     results.append(.toolResult(toolUseId: toolUse.id, content: output, isError: false))
                 } catch {
+                    JarvisLog.shared.error("Tool \(toolUse.name) falló: \(error.localizedDescription)")
                     results.append(.toolResult(
                         toolUseId: toolUse.id,
                         content: error.localizedDescription,
@@ -122,12 +126,15 @@ final class ClaudeClient: MessagesAPIClient {
         case 200:
             return try JSONDecoder().decode(MessagesResponse.self, from: data)
         case 401, 403:
+            JarvisLog.shared.error("Claude: HTTP \(http.statusCode) (clave rechazada)")
             throw JarvisError.invalidAPIKey
         case 429:
+            JarvisLog.shared.warn("Claude: HTTP 429 (rate limit)")
             throw JarvisError.rateLimited
         default:
             let message = (try? JSONDecoder().decode(APIErrorResponse.self, from: data))?
                 .error?.message ?? "código \(http.statusCode)"
+            JarvisLog.shared.error("Claude: HTTP \(http.statusCode): \(String(message.prefix(200)))")
             throw JarvisError.apiError(message)
         }
     }

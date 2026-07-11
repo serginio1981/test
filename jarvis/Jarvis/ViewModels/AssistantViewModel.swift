@@ -9,6 +9,7 @@ import UIKit
 @MainActor
 final class AssistantViewModel {
     static let localeDefaultsKey = "jarvis.locale"
+    static let hapticsDefaultsKey = "jarvis.haptics"
 
     // Estado observable por la UI.
     private(set) var state: AssistantState = .idle
@@ -55,6 +56,7 @@ final class AssistantViewModel {
         hasBootstrapped = true
 
         permissionsGranted = await SpeechRecognizer.requestPermissions()
+        JarvisLog.shared.info("Arranque: permisos de voz \(permissionsGranted ? "concedidos" : "DENEGADOS")")
         guard permissionsGranted else {
             state = .error(JarvisError.permissionsDenied.spokenMessage)
             return
@@ -63,6 +65,7 @@ final class AssistantViewModel {
         do {
             try AudioSessionManager.configure()
         } catch {
+            JarvisLog.shared.error("Arranque: fallo configurando la sesión de audio: \(error.localizedDescription)")
             state = .error(JarvisError.speechUnavailable.spokenMessage)
             return
         }
@@ -132,19 +135,31 @@ final class AssistantViewModel {
 
     private func wakeWordDetected() {
         guard state == .listeningForWakeWord else { return }
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        JarvisLog.shared.info("Wake word detectado")
         beginCommand()
     }
 
     private func beginCommand() {
+        activationHaptic()
         liveTranscript = ""
         currentResponse = ""
         do {
             try recognizer.start(mode: .command)
             state = .listeningForCommand
         } catch {
+            JarvisLog.shared.error("STT: no se pudo iniciar el modo comando: \(error.localizedDescription)")
             state = .error(JarvisError.speechUnavailable.spokenMessage)
         }
+    }
+
+    /// Vibración al activarse Jarvis (wake word o toque en el reactor),
+    /// desactivable desde Ajustes.
+    private func activationHaptic() {
+        let defaults = UserDefaults.standard
+        let enabled = defaults.object(forKey: Self.hapticsDefaultsKey) == nil
+            || defaults.bool(forKey: Self.hapticsDefaultsKey)
+        guard enabled else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
 
     private func handleCommand(_ transcript: String) {
@@ -155,11 +170,13 @@ final class AssistantViewModel {
             : transcript
 
         guard !text.isEmpty else {
+            JarvisLog.shared.warn("Comando terminado sin transcripción")
             currentResponse = "No le he oído, señor."
             startWakeWordListening()
             return
         }
 
+        JarvisLog.shared.info("Comando: «\(text)»")
         liveTranscript = text
         messages.append(ChatMessage(role: .user, text: text))
         state = .thinking
@@ -176,10 +193,12 @@ final class AssistantViewModel {
             await speak(reply)
         } catch let error as JarvisError {
             // También al historial, para que el error quede consultable.
+            JarvisLog.shared.error("Respuesta fallida: \(error.spokenMessage)")
             messages.append(ChatMessage(role: .assistant, text: error.spokenMessage))
             await speak(error.spokenMessage, isError: true)
         } catch {
             let message = "\(JarvisError.networkError.spokenMessage) (\(error.localizedDescription))"
+            JarvisLog.shared.error("Respuesta fallida (inesperado): \(error.localizedDescription)")
             messages.append(ChatMessage(role: .assistant, text: message))
             await speak(message, isError: true)
         }

@@ -14,6 +14,10 @@ struct SettingsView: View {
     @State private var testResult: TestResult?
     @State private var isTesting = false
 
+    @State private var hapticsEnabled = UserDefaults.standard.object(forKey: AssistantViewModel.hapticsDefaultsKey) == nil
+        || UserDefaults.standard.bool(forKey: AssistantViewModel.hapticsDefaultsKey)
+    @State private var devMode = UserDefaults.standard.bool(forKey: JarvisLog.devModeDefaultsKey)
+
     @State private var msClientId = UserDefaults.standard.string(forKey: MicrosoftAuthService.clientIdDefaultsKey) ?? ""
     @State private var msAccountName = MicrosoftAuthService.shared.accountName
     @State private var isMsSignedIn = MicrosoftAuthService.shared.isSignedIn
@@ -39,6 +43,7 @@ struct SettingsView: View {
                 modelSection
                 microsoftSection
                 voiceSection
+                appSection
                 testSection
                 aboutSection
             }
@@ -168,6 +173,32 @@ struct SettingsView: View {
             .onChange(of: locale) { _, newValue in
                 viewModel.updateLocale(newValue)
             }
+        }
+    }
+
+    private var appSection: some View {
+        Section {
+            Toggle("Vibración al activar a Jarvis", isOn: $hapticsEnabled)
+                .onChange(of: hapticsEnabled) { _, newValue in
+                    UserDefaults.standard.set(newValue, forKey: AssistantViewModel.hapticsDefaultsKey)
+                }
+            Toggle("Modo desarrollador", isOn: $devMode)
+                .onChange(of: devMode) { _, newValue in
+                    UserDefaults.standard.set(newValue, forKey: JarvisLog.devModeDefaultsKey)
+                }
+            if devMode {
+                NavigationLink {
+                    LogView()
+                } label: {
+                    Label("Ver registro de la app", systemImage: "terminal")
+                }
+            }
+        } header: {
+            Text("Aplicación")
+        } footer: {
+            devMode
+                ? Text("El registro guarda los últimos 500 eventos internos (voz, Claude, herramientas) para diagnosticar fallos. No contiene claves ni tokens.")
+                : Text("")
         }
     }
 
