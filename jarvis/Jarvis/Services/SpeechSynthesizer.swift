@@ -11,6 +11,9 @@ final class SpeechSynthesizer: NSObject, AVSpeechSynthesizerDelegate {
     override init() {
         super.init()
         synthesizer.delegate = self
+        // Sesión de audio propia del sistema para la voz: evita que el estado
+        // de la sesión de grabación (AVAudioEngine) pueda silenciar el TTS.
+        synthesizer.usesApplicationAudioSession = false
     }
 
     /// Lee el texto en voz alta y retorna cuando termina (o se cancela).

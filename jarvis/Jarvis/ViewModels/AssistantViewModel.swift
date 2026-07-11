@@ -148,13 +148,20 @@ final class AssistantViewModel {
     }
 
     private func handleCommand(_ transcript: String) {
-        guard !transcript.isEmpty else {
+        // El reconocedor a veces entrega la transcripción final vacía aunque
+        // hubo parciales: usa como respaldo lo que el usuario vio en pantalla.
+        let text = transcript.isEmpty
+            ? liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+            : transcript
+
+        guard !text.isEmpty else {
+            currentResponse = "No le he oído, señor."
             startWakeWordListening()
             return
         }
 
-        liveTranscript = transcript
-        messages.append(ChatMessage(role: .user, text: transcript))
+        liveTranscript = text
+        messages.append(ChatMessage(role: .user, text: text))
         state = .thinking
 
         Task {
@@ -168,9 +175,13 @@ final class AssistantViewModel {
             messages.append(ChatMessage(role: .assistant, text: reply))
             await speak(reply)
         } catch let error as JarvisError {
+            // También al historial, para que el error quede consultable.
+            messages.append(ChatMessage(role: .assistant, text: error.spokenMessage))
             await speak(error.spokenMessage, isError: true)
         } catch {
-            await speak(JarvisError.networkError.spokenMessage, isError: true)
+            let message = "\(JarvisError.networkError.spokenMessage) (\(error.localizedDescription))"
+            messages.append(ChatMessage(role: .assistant, text: message))
+            await speak(message, isError: true)
         }
         startWakeWordListening()
     }

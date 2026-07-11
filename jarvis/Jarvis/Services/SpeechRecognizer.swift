@@ -36,7 +36,10 @@ final class SpeechRecognizer {
 
     private static let wakeTaskRestartInterval: TimeInterval = 50
     private static let commandSilenceTimeout: TimeInterval = 1.5
-    private static let commandMaxDuration: TimeInterval = 15
+    /// Margen inicial antes de la primera palabra: el usuario tarda en
+    /// empezar a hablar tras tocar el reactor o decir el wake word.
+    private static let commandInitialTimeout: TimeInterval = 6
+    private static let commandMaxDuration: TimeInterval = 20
 
     init(localeIdentifier: String = "es-ES") {
         setLocale(localeIdentifier)
@@ -196,14 +199,15 @@ final class SpeechRecognizer {
                     self?.finishCommand()
                 }
             }
-            resetSilenceTimer()
+            // Ventana inicial amplia: aún no ha empezado a hablar.
+            resetSilenceTimer(interval: Self.commandInitialTimeout)
         }
     }
 
-    private func resetSilenceTimer() {
+    private func resetSilenceTimer(interval: TimeInterval = SpeechRecognizer.commandSilenceTimeout) {
         silenceTimer?.invalidate()
         silenceTimer = Timer.scheduledTimer(
-            withTimeInterval: Self.commandSilenceTimeout,
+            withTimeInterval: interval,
             repeats: false
         ) { [weak self] _ in
             Task { @MainActor in
