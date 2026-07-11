@@ -80,11 +80,21 @@ En Xcode:
 5. Di **«Jarvis»** y luego tu orden. También puedes tocar el reactor para hablar
    directamente, o tocarlo mientras habla para interrumpirle.
 
-### Mejor voz (recomendado)
+### Mejor voz (muy recomendado)
 
-La voz por defecto de iOS es robótica. Descarga una voz mejorada en
-*Ajustes → Accesibilidad → Contenido hablado → Voces → Español* (por ejemplo,
-una voz «Premium»): la app elige automáticamente la de mayor calidad instalada.
+Sin configurar nada, iOS usa su voz española por defecto (femenina y
+«compacta», que suena robótica). Para el efecto mayordomo:
+
+1. En iOS: *Ajustes → Accesibilidad → Contenido hablado → Voces → Español* y
+   descarga una voz **masculina** en calidad **mejorada o premium** (p. ej.
+   las voces de España o México masculinas).
+2. En Jarvis: Ajustes ⚙️ → sección **Voz** → elige la voz en «Voz de Jarvis»
+   (o deja «Automática», que prefiere masculinas de mayor calidad) y pulsa
+   **Escuchar prueba de voz**.
+
+Nota honesta: la voz *exacta* de la película (Paul Bettany) no se puede
+reproducir — es la voz de un actor real. Con una voz masculina premium y la
+personalidad del asistente se consigue el efecto más cercano posible.
 
 ## Configurar el correo de Outlook (Azure, gratis, ~5 minutos)
 

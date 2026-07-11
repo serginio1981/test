@@ -1,7 +1,8 @@
+import AVFoundation
 import SwiftUI
 
 /// Ajustes: clave de API (Keychain), modelo de Claude, idioma de
-/// reconocimiento y prueba de conexión.
+/// reconocimiento, voz y prueba de conexión.
 struct SettingsView: View {
     @Environment(AssistantViewModel.self) private var viewModel
     @Environment(\.dismiss) private var dismiss
@@ -13,6 +14,9 @@ struct SettingsView: View {
         ?? "es-ES"
     @State private var testResult: TestResult?
     @State private var isTesting = false
+
+    @State private var voiceId = UserDefaults.standard.string(forKey: SpeechSynthesizer.voiceDefaultsKey) ?? ""
+    @State private var previewSynthesizer = SpeechSynthesizer()
 
     @State private var hapticsEnabled = UserDefaults.standard.object(forKey: AssistantViewModel.hapticsDefaultsKey) == nil
         || UserDefaults.standard.bool(forKey: AssistantViewModel.hapticsDefaultsKey)
@@ -164,7 +168,7 @@ struct SettingsView: View {
     }
 
     private var voiceSection: some View {
-        Section("Reconocimiento de voz") {
+        Section {
             Picker("Idioma", selection: $locale) {
                 ForEach(Self.locales, id: \.id) { entry in
                     Text(entry.name).tag(entry.id)
@@ -173,7 +177,44 @@ struct SettingsView: View {
             .onChange(of: locale) { _, newValue in
                 viewModel.updateLocale(newValue)
             }
+
+            Picker("Voz de Jarvis", selection: $voiceId) {
+                Text("Automática (masculina)").tag("")
+                ForEach(SpeechSynthesizer.availableSpanishVoices(), id: \.identifier) { voice in
+                    Text(voiceLabel(for: voice)).tag(voice.identifier)
+                }
+            }
+            .onChange(of: voiceId) { _, newValue in
+                UserDefaults.standard.set(newValue, forKey: SpeechSynthesizer.voiceDefaultsKey)
+            }
+
+            Button("Escuchar prueba de voz") {
+                Task {
+                    await previewSynthesizer.speak("A su servicio, señor. Sistemas operativos y a la espera de sus órdenes.")
+                }
+            }
+        } header: {
+            Text("Voz")
+        } footer: {
+            Text("Las voces marcadas «compacta» suenan robóticas. Descarga una voz masculina mejorada o premium en Ajustes de iOS → Accesibilidad → Contenido hablado → Voces → Español, y aparecerá aquí.")
         }
+    }
+
+    private func voiceLabel(for voice: AVSpeechSynthesisVoice) -> String {
+        let gender: String
+        switch voice.gender {
+        case .male: gender = "masc."
+        case .female: gender = "fem."
+        default: gender = ""
+        }
+        let quality: String
+        switch voice.quality {
+        case .premium: quality = "premium"
+        case .enhanced: quality = "mejorada"
+        default: quality = "compacta"
+        }
+        let parts = [voice.name, voice.language, gender, quality].filter { !$0.isEmpty }
+        return parts.joined(separator: " · ")
     }
 
     private var appSection: some View {
