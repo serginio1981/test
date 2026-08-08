@@ -48,11 +48,18 @@ Librerías (Gestor de librerías del IDE): **Adafruit SSD1306** y
 > usa un divisor de tensión (dos resistencias iguales en serie) y multiplica
 > la lectura por 2 en el código.
 
-## 3. `ubuntu_app/` — Aplicación de escritorio para Ubuntu
+## 3. `ubuntu_app/` — Aplicaciones para Ubuntu
 
-Interfaz gráfica (Python + Tkinter) que se conecta al UNO o al MEGA por USB:
-botones para el modo del LED, deslizador para el servo, lectura en vivo de
-la placa solar y monitor serie integrado. Instrucciones completas en
+Dos programas que se conectan al UNO o al MEGA por USB:
+
+- **`panel_arduino.py`** — interfaz gráfica (Tkinter): botones para el modo
+  del LED, deslizador para el servo, lectura en vivo de la placa solar y
+  monitor serie integrado.
+- **`panel_arduino_cli.py`** — versión de terminal para WSL o equipos sin
+  escritorio, con órdenes sueltas (`led 2`, `servo 135`, `monitor`) y modo
+  interactivo.
+
+Instrucciones completas (incluido cómo pasar el USB a WSL con usbipd) en
 [`ubuntu_app/README.md`](ubuntu_app/README.md).
 
 ## Cómo subir un programa
