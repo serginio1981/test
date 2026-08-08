@@ -59,7 +59,7 @@ Dos programas que se conectan al UNO o al MEGA por USB:
   escritorio, con órdenes sueltas (`led 2`, `servo 135`, `monitor`) y modo
   interactivo.
 
-Instrucciones completas (incluido cómo pasar el USB a WSL con usbipd) en
+**Manual completo de montaje y conexión: [MANUAL.md](MANUAL.md).** Instrucciones detalladas de las apps en
 [`ubuntu_app/README.md`](ubuntu_app/README.md).
 
 ## Cómo subir un programa
