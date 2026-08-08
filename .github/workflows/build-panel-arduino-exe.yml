@@ -1,0 +1,41 @@
+name: Build PanelArduino.exe
+
+# Compila la app de escritorio como un .exe portable de Windows
+# (un unico archivo, sin instalacion y sin admin) usando PyInstaller.
+# El resultado se descarga desde la pestaña Actions -> Artifacts.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'arduino/apps/panel_arduino.py'
+      - '.github/workflows/build-panel-arduino-exe.yml'
+
+jobs:
+  build-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install pyserial pyinstaller
+
+      - name: Build portable exe
+        run: >
+          pyinstaller --onefile --windowed --name PanelArduino
+          --clean --noconfirm arduino/apps/panel_arduino.py
+
+      - name: Smoke check
+        run: |
+          if (-not (Test-Path dist/PanelArduino.exe)) { exit 1 }
+          Get-Item dist/PanelArduino.exe | Format-List Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PanelArduino-windows-portable
+          path: dist/PanelArduino.exe
+          if-no-files-found: error

@@ -17,7 +17,9 @@ arduino/
 ├── uno_boton_led/           Sketch del UNO: pulsador + LED + OLED
 ├── escaner_i2c/             Diagnóstico: ¿qué hay en el bus I2C?
 ├── prueba_mpu6050/          Diagnóstico: ¿el acelerómetro mide bien?
-└── ubuntu_app/              Apps del PC (GUI, CLI, puente TCP, medidor CPU)
+└── apps/                    Apps del PC (GUI, CLI, puente TCP, medidor CPU)
+    ├── windows/             construir_exe.bat (build del .exe portable)
+    └── linux/               lanzador .desktop
 ```
 
 ## Hardware
@@ -77,7 +79,7 @@ mostrando el modo. Comandos serie: `M0`..`M3`, `?`. Publica `MODO:n`.
 > **Adafruit GFX** en ambos casos. Si la OLED muestra «nieve», es que el
 > selector no coincide con tu chip — historia completa en el manual.
 
-## Apps del PC (`ubuntu_app/`)
+## Apps del PC (`apps/`)
 
 | App | Qué es |
 |---|---|
@@ -86,17 +88,17 @@ mostrando el modo. Comandos serie: `M0`..`M3`, `?`. Publica `MODO:n`.
 | `panel_arduino.py` | GUI de escritorio (Tkinter) con botones y deslizadores |
 | `medidor_cpu.py` | La CPU del PC en el servo: un medidor de aguja físico |
 
-Instrucciones detalladas y el flujo WSL completo: [`ubuntu_app/README.md`](ubuntu_app/README.md).
+Instrucciones detalladas y el flujo WSL completo: [`apps/README.md`](apps/README.md).
 
 ## Conexión desde WSL en 30 segundos (sin admin)
 
 ```bash
 # Ubuntu/WSL (primero):
-python3 ubuntu_app/panel_arduino_cli.py -p escuchar://:8765
+python3 apps/panel_arduino_cli.py -p escuchar://:8765
 ```
 ```powershell
 # Windows (después; con mirrored es 127.0.0.1, si no la CLI te imprime la IP):
-python ubuntu_app\puente_com_tcp.py COM4 -c 127.0.0.1:8765
+python apps\puente_com_tcp.py COM4 -c 127.0.0.1:8765
 ```
 
 ¿Por qué este baile? El firewall de Windows corta WSL→Windows y sin admin no

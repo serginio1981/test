@@ -131,7 +131,7 @@ El puerto bueno es el **USB-SERIAL CH340** (p. ej. COM4). Ignora el
 Cada sesión (con la CLI de WSL ya escuchando, ver §6):
 
 ```powershell
-cd <repo>\arduino\ubuntu_app
+cd <repo>\arduino\apps
 python puente_com_tcp.py COM4 -c 127.0.0.1:8765
 ```
 
@@ -145,7 +145,7 @@ Cada sesión (mejor antes que el puente, aunque el orden no es crítico —
 el puente reintenta cada 2 s):
 
 ```bash
-cd /mnt/c/<ruta-del-repo>/arduino/ubuntu_app
+cd /mnt/c/<ruta-del-repo>/arduino/apps
 python3 panel_arduino_cli.py -p escuchar://:8765
 ```
 
@@ -244,4 +244,4 @@ Para controlar los dos Arduinos a la vez: segundo puente en otro puerto TCP —
 
 *Protocolo serie a 9600 baudios. Sketches: [`mega_panel_control.ino`](mega_panel_control/mega_panel_control.ino)
 y [`uno_boton_led.ino`](uno_boton_led/uno_boton_led.ino). Apps:
-[`ubuntu_app/`](ubuntu_app/).*
+[`apps/`](apps/).*

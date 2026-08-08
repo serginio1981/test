@@ -1,4 +1,4 @@
-# Panel Arduino — aplicaciones para Ubuntu
+# Panel Arduino — aplicaciones de PC (Ubuntu, WSL y Windows)
 
 Dos formas de controlar los Arduinos desde el PC:
 
@@ -54,11 +54,11 @@ automáticamente a los 2 segundos.
 
 ## Acceso directo en el escritorio (opcional)
 
-Edita `panel-arduino.desktop`, cambia la línea `Exec=` poniendo la ruta real
+Edita `linux/panel-arduino.desktop`, cambia la línea `Exec=` poniendo la ruta real
 del script en tu equipo y cópialo a:
 
 ```bash
-cp panel-arduino.desktop ~/.local/share/applications/
+cp linux/panel-arduino.desktop ~/.local/share/applications/
 ```
 
 Aparecerá como «Panel Arduino» en el lanzador de aplicaciones.
@@ -98,6 +98,30 @@ python3 panel_arduino_cli.py
 El puerto se autodetecta; si hay varios, o usas WSL1, indícalo con
 `-p /dev/ttyS3`, por ejemplo. El programa espera 2 s tras abrir el puerto
 porque el Arduino se reinicia al conectar (ajustable con `-e`).
+
+## App portable para Windows (`PanelArduino.exe`)
+
+La interfaz gráfica también existe como **ejecutable portable de Windows**:
+un único `PanelArduino.exe` que no necesita Python, ni instalación, ni
+permisos de administrador — cópialo a cualquier carpeta (o un USB) y doble
+clic. Se conecta directo al COM del Arduino e incluye los controles del
+sketch multiusos (modos Alarma/Nivel/Theremin, botón Pulsar) y hace sonar
+la alarma en Windows cuando el MEGA la dispara.
+
+Dos maneras de conseguir el .exe:
+
+1. **Descargarlo de GitHub Actions** (recomendado): pestaña **Actions** del
+   repo → workflow *Build PanelArduino.exe* → última ejecución → sección
+   **Artifacts** → `PanelArduino-windows-portable`. (Si no hay ninguna
+   ejecución, lánzala con *Run workflow*.)
+2. **Construirlo tú mismo** (sin admin, ~2 min): doble clic a
+   [`windows/construir_exe.bat`](windows/construir_exe.bat) en esta carpeta. Deja el
+   resultado en `dist\PanelArduino.exe`.
+
+> ⚠️ Cierra el puente TCP y el IDE antes de conectar el .exe al COM — solo
+> un programa puede usar el puerto a la vez. Y al ser un .exe sin firmar,
+> Windows SmartScreen puede avisar la primera vez: «Más información →
+> Ejecutar de todas formas» (no pide admin).
 
 ## Medidor analógico de CPU (`medidor_cpu.py`)
 

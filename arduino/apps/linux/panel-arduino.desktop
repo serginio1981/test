@@ -2,7 +2,7 @@
 Type=Application
 Name=Panel Arduino
 Comment=Controla el Arduino UNO/MEGA por USB
-Exec=python3 /ruta/al/repo/arduino/ubuntu_app/panel_arduino.py
+Exec=python3 /ruta/al/repo/arduino/apps/panel_arduino.py
 Icon=utilities-terminal
 Terminal=false
 Categories=Development;Electronics;
