@@ -6,18 +6,22 @@ encoder rotativo y una placa solar pequeña.
 
 ## 1. `uno_boton_led/` — Arduino UNO
 
-Usa el montaje que ya tienes en la protoboard (pulsador + LED). Cada
+Usa el montaje de la protoboard (pulsador + LED) más la pantalla OLED. Cada
 pulsación cambia el modo del LED: apagado → encendido → parpadeo lento →
-parpadeo rápido. Incluye antirrebote por software y mensajes por el monitor
-serie (9600 baudios).
+parpadeo rápido. La OLED muestra el modo actual en grande con una barra de
+progreso. Incluye antirrebote por software y también acepta comandos por el
+puerto serie (`M0`..`M3`) desde la app de escritorio.
 
 | Componente | Pin UNO |
 |------------|---------|
 | LED (con resistencia 220 Ω) | 9 |
 | Pulsador (al GND, pull-up interna) | 2 |
+| OLED SDA / SCL | A4 / A5 |
 
-No necesita ninguna librería. Abre el `.ino` en el IDE de Arduino,
-selecciona **Arduino UNO** como placa y sube.
+Librerías (Gestor de librerías del IDE): **Adafruit SSD1306** y
+**Adafruit GFX Library**. Si no conectas la OLED, el programa funciona
+igualmente. Abre el `.ino` en el IDE de Arduino, selecciona **Arduino UNO**
+como placa y sube.
 
 ## 2. `mega_panel_control/` — Arduino MEGA 2560
 
@@ -27,6 +31,8 @@ Mini estación de control que junta el resto de componentes:
 - Pulsando el eje del encoder el servo vuelve al centro (90°).
 - La **OLED** muestra el ángulo del servo y el voltaje de la **placa solar**
   (leída por A0), con una barra gráfica del ángulo.
+- Acepta comandos por el puerto serie (`A<ángulo>`, `C`) desde la app de
+  escritorio.
 
 | Componente | Pin MEGA |
 |------------|----------|
@@ -41,6 +47,13 @@ Librerías (Gestor de librerías del IDE): **Adafruit SSD1306** y
 > ⚠️ La placa solar debe conectarse a A0 solo si da menos de 5 V. Si da más,
 > usa un divisor de tensión (dos resistencias iguales en serie) y multiplica
 > la lectura por 2 en el código.
+
+## 3. `ubuntu_app/` — Aplicación de escritorio para Ubuntu
+
+Interfaz gráfica (Python + Tkinter) que se conecta al UNO o al MEGA por USB:
+botones para el modo del LED, deslizador para el servo, lectura en vivo de
+la placa solar y monitor serie integrado. Instrucciones completas en
+[`ubuntu_app/README.md`](ubuntu_app/README.md).
 
 ## Cómo subir un programa
 

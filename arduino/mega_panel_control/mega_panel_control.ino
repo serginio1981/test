@@ -8,6 +8,13 @@
  *     voltaje que entrega la placa solar.
  *   - Placa solar: se lee su voltaje por A0.
  *
+ * Comandos por serie (9600 baudios), pensados para la app de escritorio:
+ *   A<numero>  -> mueve el servo a ese ángulo (ej. "A135")
+ *   C          -> centra el servo (90 grados)
+ *   ?          -> reenvía el estado actual
+ * El estado se publica como líneas "ANGULO:n" y "SOLAR:v" para que sea
+ * fácil de parsear.
+ *
  * Cableado (MEGA 2560):
  *   OLED SSD1306 (I2C):
  *     VCC -> 5V   GND -> GND   SDA -> pin 20 (SDA)   SCL -> pin 21 (SCL)
@@ -85,17 +92,32 @@ void loop() {
     delay(200);                      // antirrebote sencillo del pulsador
   }
 
+  leerSerie();
   servo.write(angulo);
 
   if (millis() - ultimoRefresco >= REFRESCO_MS) {
     ultimoRefresco = millis();
     float voltios = analogRead(PIN_SOLAR) * (5.0 / 1023.0);
     dibujarPantalla(angulo, voltios);
-    Serial.print(F("Angulo: "));
-    Serial.print(angulo);
-    Serial.print(F("  Solar: "));
-    Serial.print(voltios, 2);
-    Serial.println(F(" V"));
+    Serial.print(F("ANGULO:"));
+    Serial.println(angulo);
+    Serial.print(F("SOLAR:"));
+    Serial.println(voltios, 2);
+  }
+}
+
+// Órdenes recibidas desde la app de escritorio (o el monitor serie)
+void leerSerie() {
+  while (Serial.available() > 0) {
+    char c = Serial.read();
+    if (c == 'A' || c == 'a') {
+      int valor = Serial.parseInt();   // lee el número que sigue a la A
+      angulo = constrain(valor, 0, 180);
+    } else if (c == 'C' || c == 'c') {
+      angulo = 90;
+    } else if (c == '?') {
+      ultimoRefresco = 0;              // fuerza un refresco inmediato
+    }
   }
 }
 
