@@ -206,6 +206,12 @@ Cableado adicional:
 | LED «sirena visual» (opcional) | Ánodo + resistencia 220 Ω | `9` |
 | | Cátodo | `GND` |
 
+**¿Sin encoder conectado?** El sketch también se maneja por comandos serie
+desde la CLI: `modo 0..2` cambia de modo y `pulsar` equivale al botón
+(arma/desarma, calibra, silencia). Y cuando la alarma salta, el MEGA publica
+`EVENTO:ALARMA` y **la CLI hace sonar la alarma en el PC** (en WSL suena por
+el lado Windows vía PowerShell).
+
 **¿Buzzer roto o sin buzzer?** Conecta el LED con su resistencia al pin 9 y
 hace de «sirena visual»: parpadeo rápido cuando salta la alarma, destello de
 vigilancia cada 2 s, LED fijo cuando el nivel está centrado (±2°) y brillo

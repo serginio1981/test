@@ -1,76 +1,121 @@
-# Proyectos Arduino
+# Estación Arduino — MEGA 2560 + UNO controlados desde Ubuntu (WSL)
 
-Dos programas pensados para el material de las fotos: Arduino UNO, Arduino
-MEGA 2560, protoboard con pulsador y LED, pantalla OLED SSD1306, servo SG90,
-encoder rotativo y una placa solar pequeña.
+Proyecto completo de electrónica y software: dos Arduinos con pantalla OLED,
+sensores y actuadores, controlados desde Ubuntu bajo WSL2 en Windows **sin
+permisos de administrador**, con apps de escritorio y de terminal.
 
-## 1. `uno_boton_led/` — Arduino UNO
+> 📖 **Manual completo de montaje, conexión y problemas resueltos:
+> [MANUAL.md](MANUAL.md)** (con diagramas que GitHub renderiza solos).
 
-Usa el montaje de la protoboard (pulsador + LED) más la pantalla OLED. Cada
-pulsación cambia el modo del LED: apagado → encendido → parpadeo lento →
-parpadeo rápido. La OLED muestra el modo actual en grande con una barra de
-progreso. Incluye antirrebote por software y también acepta comandos por el
-puerto serie (`M0`..`M3`) desde la app de escritorio.
+## Mapa del proyecto
 
-| Componente | Pin UNO |
-|------------|---------|
-| LED (con resistencia 220 Ω) | 9 |
-| Pulsador (al GND, pull-up interna) | 2 |
-| OLED SDA / SCL | A4 / A5 |
+```
+arduino/
+├── MANUAL.md                ← empieza por aquí
+├── mega_panel_control/      Sketch principal del MEGA 2560
+├── mpu_multiusos/           Sketch 3-en-1: alarma, nivel y theremin (MEGA)
+├── uno_boton_led/           Sketch del UNO: pulsador + LED + OLED
+├── escaner_i2c/             Diagnóstico: ¿qué hay en el bus I2C?
+├── prueba_mpu6050/          Diagnóstico: ¿el acelerómetro mide bien?
+└── ubuntu_app/              Apps del PC (GUI, CLI, puente TCP, medidor CPU)
+```
 
-Librerías (Gestor de librerías del IDE): **Adafruit SSD1306** y
-**Adafruit GFX Library**. Si no conectas la OLED, el programa funciona
-igualmente. Abre el `.ino` en el IDE de Arduino, selecciona **Arduino UNO**
-como placa y sube.
+## Hardware
 
-## 2. `mega_panel_control/` — Arduino MEGA 2560
+| Componente | Papel | Sketch que lo usa |
+|---|---|---|
+| Arduino MEGA 2560 (clon CH340) | Cerebro principal | `mega_panel_control`, `mpu_multiusos` |
+| Arduino UNO | Segundo cerebro | `uno_boton_led` |
+| OLED 128×64 I²C (chip SH1106) | Pantalla de la estación | todos los principales |
+| Encoder rotativo EC11 | Mando: girar y pulsar | `mega_panel_control`, `mpu_multiusos` |
+| Servo SG90 | Movimiento / aguja de medidor | `mega_panel_control` |
+| Placa solar ≤5 V | Sensor de luz/voltaje | `mega_panel_control` |
+| MPU-6050 | Acelerómetro + giroscopio | `mpu_multiusos`, `prueba_mpu6050` |
+| Buzzer pasivo | Sonidos y sirena (opcional) | `mpu_multiusos` |
+| LED + resistencia 220 Ω | Sirena visual / indicador | `uno_boton_led`, `mpu_multiusos` |
 
-Mini estación de control que junta el resto de componentes:
+Cableado completo pin a pin: en [MANUAL.md](MANUAL.md#2-cableado-del-mega).
 
-- Girando el **encoder** mueves el **servo SG90** de 0° a 180°.
-- Pulsando el eje del encoder el servo vuelve al centro (90°).
-- La **OLED** muestra el ángulo del servo y el voltaje de la **placa solar**
-  (leída por A0), con una barra gráfica del ángulo.
-- Acepta comandos por el puerto serie (`A<ángulo>`, `C`) desde la app de
-  escritorio.
+## Sketches
 
-| Componente | Pin MEGA |
-|------------|----------|
-| OLED SDA / SCL | 20 / 21 |
-| Encoder CLK / DT / SW | 2 / 3 / 4 |
-| Servo (señal) | 9 |
-| Placa solar (+) | A0 |
+### `mega_panel_control/` — la estación del MEGA
 
-Librerías (Gestor de librerías del IDE): **Adafruit SSD1306** y
-**Adafruit GFX Library**. La librería `Servo` ya viene con el IDE.
+- El **encoder** mueve el **servo** (0–180°); su botón lo centra.
+- La **OLED** muestra el ángulo, el voltaje de la **placa solar** y una
+  **gráfica** con el histórico de voltaje de los últimos 2 minutos.
+- Comandos serie: `A<ángulo>`, `C` (centrar), `?` (estado). Publica
+  `ANGULO:n` y `SOLAR:v`.
 
-> ⚠️ La placa solar debe conectarse a A0 solo si da menos de 5 V. Si da más,
-> usa un divisor de tensión (dos resistencias iguales en serie) y multiplica
-> la lectura por 2 en el código.
+### `mpu_multiusos/` — 3 proyectos en 1 (MEGA)
 
-## 3. `ubuntu_app/` — Aplicaciones para Ubuntu
+Girar el encoder cambia de modo; pulsarlo ejecuta la acción del modo.
+También se maneja **sin encoder**, por comandos serie desde la CLI.
 
-Dos programas que se conectan al UNO o al MEGA por USB:
+| Modo | Qué hace | Botón / `pulsar` |
+|---|---|---|
+| 🚨 Alarma | Vigila el movimiento con el MPU-6050; sirena (buzzer y/o LED) al detectarlo, y **hace sonar el PC** vía la CLI (`EVENTO:ALARMA`) | Arma / desarma |
+| 🫧 Nivel | Burbuja en la OLED según la inclinación; LED fijo al estar nivelado | Calibra el cero |
+| 🎵 Theremin | El tono sigue la inclinación (200–1800 Hz); el brillo del LED también | Silencia |
 
-- **`panel_arduino.py`** — interfaz gráfica (Tkinter): botones para el modo
-  del LED, deslizador para el servo, lectura en vivo de la placa solar y
-  monitor serie integrado.
-- **`panel_arduino_cli.py`** — versión de terminal para WSL o equipos sin
-  escritorio, con órdenes sueltas (`led 2`, `servo 135`, `monitor`) y modo
-  interactivo.
+Comandos serie: `M0`/`M1`/`M2` (modo), `P` (como pulsar el botón), `?`.
 
-**Manual completo de montaje y conexión: [MANUAL.md](MANUAL.md).** Instrucciones detalladas de las apps en
-[`ubuntu_app/README.md`](ubuntu_app/README.md).
+### `uno_boton_led/` — el UNO
+
+Pulsador que rota 4 modos de LED (apagado/fijo/lento/rápido) con la OLED
+mostrando el modo. Comandos serie: `M0`..`M3`, `?`. Publica `MODO:n`.
+
+### Diagnóstico: `escaner_i2c/` y `prueba_mpu6050/`
+
+- **escaner_i2c**: lista qué responde en el bus I²C. La OLED debe salir en
+  `0x3C` y el MPU-6050 en `0x68`. Primera herramienta ante cualquier duda.
+- **prueba_mpu6050**: imprime la aceleración X/Y/Z en vivo. En plano debe
+  marcar `Z: 1.00`; al inclinarlo, la gravedad se muda de eje.
+
+> Todos los sketches con pantalla llevan el selector `#define
+> PANTALLA_SH1106`: activo usa la librería **Adafruit SH110X** (nuestra
+> pantalla); comentado, **Adafruit SSD1306** (las de 0.96"). Además de la
+> **Adafruit GFX** en ambos casos. Si la OLED muestra «nieve», es que el
+> selector no coincide con tu chip — historia completa en el manual.
+
+## Apps del PC (`ubuntu_app/`)
+
+| App | Qué es |
+|---|---|
+| `panel_arduino_cli.py` | **CLI para WSL/terminal**: `servo 90`, `led 2`, `modo 0`, `pulsar`, `monitor`... y suena la alarma en el PC cuando el MEGA la dispara |
+| `puente_com_tcp.py` | **Puente COM↔TCP** que corre en Windows sin admin; su modo inverso (`-c`) esquiva el firewall |
+| `panel_arduino.py` | GUI de escritorio (Tkinter) con botones y deslizadores |
+| `medidor_cpu.py` | La CPU del PC en el servo: un medidor de aguja físico |
+
+Instrucciones detalladas y el flujo WSL completo: [`ubuntu_app/README.md`](ubuntu_app/README.md).
+
+## Conexión desde WSL en 30 segundos (sin admin)
+
+```bash
+# Ubuntu/WSL (primero):
+python3 ubuntu_app/panel_arduino_cli.py -p escuchar://:8765
+```
+```powershell
+# Windows (después; con mirrored es 127.0.0.1, si no la CLI te imprime la IP):
+python ubuntu_app\puente_com_tcp.py COM4 -c 127.0.0.1:8765
+```
+
+¿Por qué este baile? El firewall de Windows corta WSL→Windows y sin admin no
+se puede abrir; Windows→WSL siempre pasa, así que el puente llama a la CLI.
+Diagrama y alternativas en el [manual](MANUAL.md#4-la-cadena-de-conexión).
 
 ## Cómo subir un programa
 
-1. Instala el [IDE de Arduino](https://www.arduino.cc/en/software).
-2. Abre el archivo `.ino` de la carpeta correspondiente.
-3. Conecta la placa por USB y selecciona placa y puerto en
-   **Herramientas → Placa / Puerto**.
-4. Pulsa el botón de subir (flecha →).
-5. Abre el **Monitor Serie** a 9600 baudios para ver los mensajes.
+1. IDE de Arduino en Windows (hay .zip portable, sin admin).
+2. Librerías: **Adafruit SH110X** + **Adafruit GFX** (gestor de librerías o ZIP).
+3. Placa **Arduino Mega or Mega 2560** (o **Arduino Uno**) y puerto **COM4**
+   (el *USB-SERIAL CH340*; el «Intel AMT-SOL» no es).
+4. ⚠️ Cierra el puente TCP antes de subir — solo uno puede usar el COM.
+5. Monitor Serie a **9600 baudios** para ver qué cuenta la placa.
 
-> Nota: los MEGA "clónicos" (como el azul de las fotos) suelen usar el chip
-> USB CH340. Si el puerto no aparece, instala el driver CH340 para tu
-> sistema operativo.
+## Historial del proyecto
+
+Construido y depurado en vivo: incluye las batallas reales contra el firewall
+de Windows, la pantalla SH1106 que fingía ser SSD1306, el puerto COM3
+impostor de Intel y un buzzer que llegó muerto. Cada una está documentada en
+la [tabla de problemas del manual](MANUAL.md#8-solución-de-problemas) para
+que la próxima vez sean 30 segundos y no una tarde.
