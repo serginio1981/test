@@ -1,0 +1,59 @@
+name: Build Jarvis IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/ios-jarvis-assistant-c7hj3g
+    paths:
+      - 'jarvis/**'
+      - '.github/workflows/build-jarvis-ipa.yml'
+
+jobs:
+  build:
+    name: Build unsigned IPA
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: jarvis
+        run: xcodegen generate
+
+      - name: Build (Release, unsigned)
+        working-directory: jarvis
+        run: |
+          xcodebuild \
+            -project Jarvis.xcodeproj \
+            -scheme Jarvis \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package IPA
+        working-directory: jarvis
+        run: |
+          APP_PATH="build/Build/Products/Release-iphoneos/Jarvis.app"
+          test -d "$APP_PATH"
+          mkdir -p ipa/Payload
+          cp -R "$APP_PATH" ipa/Payload/
+          cd ipa
+          zip -qry Jarvis.ipa Payload
+          ls -lh Jarvis.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Jarvis-ipa
+          path: jarvis/ipa/Jarvis.ipa
+          retention-days: 30
+          if-no-files-found: error

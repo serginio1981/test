@@ -1,0 +1,634 @@
+:root {
+  --bg: #0c0c14;
+  --panel: #16162400;
+  --panel-solid: #161624;
+  --panel-2: #1f1f33;
+  --line: #2c2c45;
+  --text: #e7e7f2;
+  --dim: #9a9ab5;
+  --accent: #38e8d8;
+  --accent-2: #ff4d9d;
+  --bass: #ffb547;
+  --lead: #38e8d8;
+  --acordes: #b98cff;
+  --drums: #ff8a3a;
+  --kick: #ff8a3a;
+  --snare: #ff6fb1;
+  --hihat: #f0d24d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(1200px 600px at 50% -10%, #1a1a30, var(--bg));
+  color: var(--text);
+  font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+header {
+  position: relative;
+  text-align: center;
+  padding: 28px 16px 8px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: 0.5px;
+  background: linear-gradient(90deg, var(--accent), var(--acordes), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.tagline {
+  margin: 6px 0 0;
+  color: var(--dim);
+  font-size: 14px;
+}
+
+main {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* En escritorios anchos aprovecha todo el ancho del navegador. */
+@media (min-width: 1100px) {
+  main {
+    max-width: min(100%, 1800px);
+    padding: 18px 32px;
+    gap: 22px;
+  }
+  footer {
+    max-width: min(100%, 1800px);
+    padding: 0 32px;
+  }
+}
+
+.panel {
+  background: var(--panel-solid);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 17px;
+}
+
+.hint {
+  margin: 0 0 14px;
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.hint b {
+  color: var(--text);
+}
+
+/* ---------- transporte ---------- */
+.transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.play-btn {
+  background: linear-gradient(180deg, var(--accent), #1ab9ab);
+  color: #04121a;
+  border: none;
+  font-weight: 800;
+  font-size: 15px;
+  padding: 12px 22px;
+  border-radius: 10px;
+  cursor: pointer;
+  min-width: 150px;
+}
+
+.play-btn.playing {
+  background: linear-gradient(180deg, var(--accent-2), #c92f73);
+  color: #fff;
+}
+
+.rec-btn {
+  background: var(--panel-2);
+  color: var(--accent-2);
+  border: 1px solid var(--accent-2);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  min-width: 120px;
+}
+.rec-btn.recording {
+  background: var(--accent-2);
+  color: #fff;
+  animation: rec-pulse 1.2s ease-in-out infinite;
+}
+@keyframes rec-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 77, 157, 0.55); }
+  50% { box-shadow: 0 0 0 8px rgba(255, 77, 157, 0); }
+}
+
+.song-ctl select {
+  min-width: 160px;
+}
+#song-delete:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ghost-btn {
+  background: transparent;
+  color: var(--dim);
+  border: 1px solid var(--line);
+  padding: 11px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.ghost-btn:hover {
+  color: var(--text);
+  border-color: var(--accent-2);
+}
+
+.ctl {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 150px;
+  flex: 1;
+}
+
+.ctl-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.ctl label {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.val {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ---------- pistas ---------- */
+.track {
+  margin-bottom: 14px;
+}
+
+.track:last-child {
+  margin-bottom: 0;
+}
+
+.track-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.track-name {
+  font-weight: 700;
+  font-size: 13px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+
+.track-name.lead { color: var(--lead); }
+.track-name.bass { color: var(--bass); }
+.track-name.acordes { color: var(--acordes); }
+.track-name.drums { color: var(--drums); }
+
+.mini {
+  background: var(--panel-2);
+  color: var(--dim);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mini:hover {
+  color: var(--text);
+}
+
+.mini.on {
+  background: var(--accent-2);
+  color: #fff;
+  border-color: var(--accent-2);
+}
+
+/* ---------- acordes ---------- */
+.chord-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.chord-slot {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  text-align: center;
+}
+
+.chord-slot.active {
+  border-color: var(--acordes);
+  box-shadow: 0 0 0 1px var(--acordes);
+}
+
+.chord-bar {
+  font-size: 11px;
+  color: var(--dim);
+  margin-bottom: 6px;
+}
+
+select {
+  width: 100%;
+  background: #0e0e18;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ---------- piano roll ---------- */
+.roll-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.roll {
+  display: flex;
+  min-width: 600px;
+}
+
+.roll-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: #0e0e18;
+  flex: 0 0 42px;
+}
+
+.rlabel {
+  height: 13px;
+  font-size: 8px;
+  line-height: 13px;
+  text-align: right;
+  padding-right: 5px;
+  color: #5b5b78;
+}
+
+.rlabel.c {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.roll-grid {
+  position: relative;
+  display: grid;
+  grid-auto-rows: 13px;
+  gap: 1px;
+  background: #0a0a12;
+  flex: 1;
+}
+
+.cell {
+  background: #1c1c2b;
+  cursor: pointer;
+}
+
+.cell.blk {
+  background: #15151f;
+}
+
+.cell.cline {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.cell.bar {
+  box-shadow: inset 1px 0 0 #3c3c5c;
+}
+
+.cell.cline.bar {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 1px 0 0 #3c3c5c;
+}
+
+.cell:hover {
+  outline: 1px solid rgba(255, 255, 255, 0.28);
+  outline-offset: -1px;
+}
+
+.cell.on {
+  background: linear-gradient(180deg, var(--accent), #1ab9ab);
+}
+
+#roll-bass .cell.on {
+  background: linear-gradient(180deg, var(--bass), #d98f1f);
+}
+
+/* ---------- grid de batería ---------- */
+.drum-grid-wrap {
+  display: flex;
+  min-width: 600px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.drum-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: #0e0e18;
+  flex: 0 0 56px;
+}
+
+.drum-lbl {
+  height: 22px;
+  padding-right: 8px;
+  line-height: 22px;
+  text-align: right;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.drum-lbl.kick { color: var(--kick); }
+.drum-lbl.snare { color: var(--snare); }
+.drum-lbl.hihat { color: var(--hihat); }
+
+.drum-grid {
+  position: relative;
+  display: grid;
+  grid-auto-rows: 22px;
+  gap: 1px;
+  background: #0a0a12;
+  flex: 1;
+}
+
+.dcell {
+  background: #1c1c2b;
+  cursor: pointer;
+}
+
+.dcell.bar {
+  box-shadow: inset 1px 0 0 #3c3c5c;
+}
+
+.dcell:hover {
+  outline: 1px solid rgba(255, 255, 255, 0.28);
+  outline-offset: -1px;
+}
+
+.dcell[data-row='kick'].on {
+  background: linear-gradient(180deg, var(--kick), #c45f1a);
+}
+.dcell[data-row='snare'].on {
+  background: linear-gradient(180deg, var(--snare), #b9438a);
+}
+.dcell[data-row='hihat'].on {
+  background: linear-gradient(180deg, var(--hihat), #b48f1d);
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(255, 77, 157, 0.16);
+  border-left: 2px solid var(--accent-2);
+  pointer-events: none;
+  display: none;
+}
+
+/* ---------- panel del sintetizador ---------- */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tab {
+  background: var(--panel-2);
+  color: var(--dim);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab.active {
+  background: var(--accent);
+  color: #04121a;
+  border-color: var(--accent);
+}
+
+.controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+/* ---------- teclado ---------- */
+.kb-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.keyboard {
+  position: relative;
+  display: flex;
+  height: 150px;
+  user-select: none;
+  margin-bottom: 12px;
+}
+
+.wkey {
+  position: relative;
+  height: 100%;
+  background: linear-gradient(180deg, #f4f4fb, #d2d2e0);
+  border: 1px solid #2c2c45;
+  border-radius: 0 0 6px 6px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.wkey.active {
+  background: linear-gradient(180deg, var(--accent), #7af2e6);
+}
+
+.bkey {
+  position: absolute;
+  top: 0;
+  height: 62%;
+  background: linear-gradient(180deg, #2a2a3c, #08080e);
+  border: 1px solid #000;
+  border-radius: 0 0 5px 5px;
+  z-index: 2;
+}
+
+.bkey.active {
+  background: linear-gradient(180deg, var(--accent-2), #ff8fc0);
+}
+
+.klabel {
+  font-size: 8px;
+  color: #6b6b85;
+  padding-bottom: 4px;
+}
+
+footer {
+  max-width: 980px;
+  margin: 8px auto 30px;
+  padding: 0 16px;
+  color: #6b6b85;
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ---------- login con Google ---------- */
+#login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: radial-gradient(900px 500px at 50% 25%, #1a1a30, #0a0a12 70%);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--panel-solid);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 28px 24px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+
+.login-card h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  background: linear-gradient(90deg, var(--accent), var(--acordes), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.login-sub {
+  margin: 0 0 22px;
+  color: var(--dim);
+  font-size: 13px;
+}
+
+.login-msg {
+  margin: 0 0 18px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+#gsi-button {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+  margin-bottom: 16px;
+}
+
+.login-error {
+  min-height: 18px;
+  margin: 0 0 8px;
+  color: var(--accent-2);
+  font-size: 12px;
+}
+
+.login-fineprint {
+  margin: 14px 0 0;
+  color: #6b6b85;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* ---------- caja de usuario en la cabecera ---------- */
+.user-box {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--dim);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 6px 5px 5px;
+  max-width: calc(100% - 32px);
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #0a0a12;
+}
+
+#user-name {
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+@media (max-width: 520px) {
+  .user-box {
+    position: static;
+    margin: 0 auto 12px;
+    width: max-content;
+  }
+}
