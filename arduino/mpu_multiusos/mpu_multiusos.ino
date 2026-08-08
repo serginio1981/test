@@ -18,6 +18,13 @@
  * hay pantalla el sketch sigue funcionando y lo cuenta por el monitor
  * serie (9600 baudios).
  *
+ * Comandos serie (para usarlo SIN encoder, desde la CLI o el monitor):
+ *   M0 / M1 / M2 -> cambia a ese modo (alarma / nivel / theremin)
+ *   P            -> equivale a pulsar el boton del encoder
+ *   ?            -> reenvia el modo actual
+ * Cuando la alarma se dispara publica "EVENTO:ALARMA" cada 3 s — la CLI
+ * del PC lo reconoce y hace sonar la alarma en el ordenador.
+ *
  * Cableado (MEGA 2560):
  *   MPU-6050 (I2C, convive con la OLED en el mismo bus):
  *     VCC -> 5V   GND -> GND   SDA -> pin 20   SCL -> pin 21
@@ -95,6 +102,7 @@ enum EstadoAlarma { DESARMADA, ARMANDO, VIGILANDO, DISPARADA };
 EstadoAlarma alarma = DESARMADA;
 unsigned long inicioArmado = 0;
 float baseX, baseY, baseZ;           // posición memorizada al armar
+unsigned long ultimoEvento = 0;      // último "EVENTO:ALARMA" enviado
 const float UMBRAL_ALARMA = 0.18;    // en g; súbelo si salta sola
 
 // --- Nivel ---
@@ -142,6 +150,7 @@ void setup() {
 void loop() {
   atenderGiro();
   atenderBoton();
+  leerSerie();
 
   switch (modo) {
     case 0: correrAlarma(); break;
@@ -169,12 +178,38 @@ void atenderGiro() {
   giroPendiente = 0;
   interrupts();
 
-  modo = (modo + N_MODOS + (giro > 0 ? 1 : N_MODOS - 1)) % N_MODOS;
+  cambiarModo((modo + N_MODOS + (giro > 0 ? 1 : N_MODOS - 1)) % N_MODOS);
+}
+
+void cambiarModo(uint8_t nuevo) {
+  modo = nuevo % N_MODOS;
   noTone(PIN_BUZZER);                // corta lo que sonara del modo anterior
   digitalWrite(PIN_LED, LOW);
   alarma = DESARMADA;                // cambiar de modo desarma por seguridad
   anunciarModo();
   pitido(440 + 220 * modo, 60);      // tono distinto por modo
+}
+
+// Comandos desde la CLI del PC (o el monitor serie): permiten manejar
+// los modos sin tener el encoder conectado.
+void leerSerie() {
+  while (Serial.available() > 0) {
+    char c = Serial.read();
+    if (c == 'M' || c == 'm') {
+      unsigned long inicio = millis();
+      while (Serial.available() == 0 && millis() - inicio < 50) {}
+      if (Serial.available() > 0) {
+        char d = Serial.read();
+        if (d >= '0' && d < '0' + N_MODOS) {
+          cambiarModo(d - '0');
+        }
+      }
+    } else if (c == 'P' || c == 'p') {
+      accionDelModo();               // como pulsar el boton del encoder
+    } else if (c == '?') {
+      anunciarModo();
+    }
+  }
 }
 
 void anunciarModo() {
@@ -314,13 +349,19 @@ void correrAlarma() {
     float delta = fabs(ax - baseX) + fabs(ay - baseY) + fabs(az - baseZ);
     if (delta > UMBRAL_ALARMA) {
       alarma = DISPARADA;
+      ultimoEvento = 0;              // publica el evento inmediatamente
       Serial.println(F("ALARMA: MOVIMIENTO DETECTADO!"));
     }
     return;
   }
 
-  // DISPARADA: sirena de dos tonos (si hay buzzer) y LED a destellos
-  // rapidos (sirena visual) hasta que pulsen el boton
+  // DISPARADA: sirena de dos tonos (si hay buzzer), LED a destellos
+  // rapidos (sirena visual) y evento serie cada 3 s para que el PC
+  // tambien suene, hasta que pulsen el boton (o llegue una P)
+  if (millis() - ultimoEvento >= 3000) {
+    ultimoEvento = millis();
+    Serial.println(F("EVENTO:ALARMA"));
+  }
   tone(PIN_BUZZER, (millis() % 300 < 150) ? 800 : 1200);
   digitalWrite(PIN_LED, millis() % 160 < 80);
 }

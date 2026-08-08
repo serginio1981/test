@@ -62,6 +62,9 @@ AYUDA_INTERACTIVO = """Comandos disponibles:
   centrar        servo a 90 grados
   estado         pide el estado actual
   monitor        muestra los datos en vivo (Ctrl+C para volver)
+  modo <0-2>     sketch multiusos: 0 alarma, 1 nivel, 2 theremin
+  pulsar         sketch multiusos: como pulsar el botón del encoder
+                 (arma/desarma la alarma, calibra el nivel, silencia)
   crudo <texto>  envía el texto tal cual por el puerto serie
   ayuda          muestra esta ayuda
   salir          termina el programa"""
@@ -236,13 +239,55 @@ def abrir(puerto, baudios, espera):
     return con
 
 
+def sonar_en_pc():
+    """Hace sonar la alarma en el PC, esté donde esté la CLI.
+
+    - Windows nativo: winsound.
+    - WSL: llama al PowerShell de Windows (el audio es del lado Windows).
+    - Último recurso: la campana de la terminal.
+    """
+    import subprocess
+    if sys.platform.startswith('win'):
+        try:
+            import winsound
+            import threading
+            def _beeps():
+                for _ in range(4):
+                    winsound.Beep(1000, 180)
+                    winsound.Beep(1400, 180)
+            threading.Thread(target=_beeps, daemon=True).start()
+            return
+        except ImportError:
+            pass
+    try:
+        subprocess.Popen(
+            ['powershell.exe', '-NoProfile', '-Command',
+             '1..4 | ForEach-Object { [console]::beep(1000,180); '
+             '[console]::beep(1400,180) }'],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return
+    except OSError:
+        pass
+    print('\a', end='', flush=True)     # campana de la terminal
+
+
 def interpretar(linea):
     """Convierte una línea del protocolo en texto legible (o None)."""
+    if linea.startswith('EVENTO:ALARMA'):
+        sonar_en_pc()
+        return '🚨 ALARMA: movimiento detectado! (sonando en el PC; '\
+               'desarma con "pulsar")'
     if linea.startswith('MODO:'):
+        partes = linea.split(':', 1)[1].split()
         try:
-            n = int(linea.split(':', 1)[1])
-            return f'LED -> modo {n} ({NOMBRES_MODO[n]})'
+            n = int(partes[0])
         except (ValueError, IndexError):
+            return linea
+        if len(partes) > 1:               # multiusos: "MODO:0 ALARMA"
+            return f'Modo -> {n} ({partes[1]})'
+        try:
+            return f'LED -> modo {n} ({NOMBRES_MODO[n]})'
+        except IndexError:
             return linea
     if linea.startswith('ANGULO:'):
         return f'Servo -> {linea.split(":", 1)[1]} grados'
@@ -314,6 +359,13 @@ def ejecutar_comando(con, orden, argumento):
         enviar(con, '?', escucha=1.5)
     elif orden == 'monitor':
         modo_monitor(con)
+    elif orden == 'modo':
+        if argumento is None or argumento not in ('0', '1', '2'):
+            print('Uso: modo <0-2>  (0 alarma, 1 nivel, 2 theremin)')
+            return
+        enviar(con, f'M{argumento}')
+    elif orden == 'pulsar':
+        enviar(con, 'P', escucha=1.5)
     elif orden == 'crudo':
         if not argumento:
             print('Uso: crudo <texto>')
@@ -359,7 +411,8 @@ def main():
                              'socket:// porque el Arduino no se reinicia)')
     parser.add_argument('orden', nargs='?',
                         choices=['puertos', 'estado', 'led', 'servo',
-                                 'centrar', 'monitor', 'crudo'],
+                                 'centrar', 'monitor', 'modo', 'pulsar',
+                                 'crudo'],
                         help='orden a ejecutar (omitir = interactivo)')
     parser.add_argument('argumento', nargs='?',
                         help='argumento de la orden (p. ej. el ángulo)')
