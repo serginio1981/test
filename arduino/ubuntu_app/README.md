@@ -99,6 +99,21 @@ El puerto se autodetecta; si hay varios, o usas WSL1, indícalo con
 `-p /dev/ttyS3`, por ejemplo. El programa espera 2 s tras abrir el puerto
 porque el Arduino se reinicia al conectar (ajustable con `-e`).
 
+## Medidor analógico de CPU (`medidor_cpu.py`)
+
+Convierte el servo en un vúmetro físico del PC: 0% de CPU = 0°, 100% = 180°.
+Pega una flecha de cartón al eje y tendrás un medidor de aguja de escritorio.
+
+```powershell
+# En Windows (mide la CPU real del PC; cierra antes el puente):
+python medidor_cpu.py -p COM4
+```
+
+También corre en WSL/Linux (midiendo la CPU de esa máquina) con los mismos
+puertos que la CLI, incluido `escuchar://`. Opciones: `-i` intervalo,
+`-s` suavizado de la aguja, `-n` número de medidas. Al salir con Ctrl+C
+centra el servo.
+
 ## Usar el Arduino desde WSL (Windows)
 
 WSL no ve los USB de Windows directamente. Comprueba primero tu versión
