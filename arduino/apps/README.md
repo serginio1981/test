@@ -1,4 +1,4 @@
-# Panel Arduino — aplicaciones para Ubuntu
+# Panel Arduino — aplicaciones de PC (Ubuntu, WSL y Windows)
 
 Dos formas de controlar los Arduinos desde el PC:
 
@@ -54,11 +54,11 @@ automáticamente a los 2 segundos.
 
 ## Acceso directo en el escritorio (opcional)
 
-Edita `panel-arduino.desktop`, cambia la línea `Exec=` poniendo la ruta real
+Edita `linux/panel-arduino.desktop`, cambia la línea `Exec=` poniendo la ruta real
 del script en tu equipo y cópialo a:
 
 ```bash
-cp panel-arduino.desktop ~/.local/share/applications/
+cp linux/panel-arduino.desktop ~/.local/share/applications/
 ```
 
 Aparecerá como «Panel Arduino» en el lanzador de aplicaciones.
@@ -115,7 +115,7 @@ Dos maneras de conseguir el .exe:
    **Artifacts** → `PanelArduino-windows-portable`. (Si no hay ninguna
    ejecución, lánzala con *Run workflow*.)
 2. **Construirlo tú mismo** (sin admin, ~2 min): doble clic a
-   [`construir_exe.bat`](construir_exe.bat) en esta carpeta. Deja el
+   [`windows/construir_exe.bat`](windows/construir_exe.bat) en esta carpeta. Deja el
    resultado en `dist\PanelArduino.exe`.
 
 > ⚠️ Cierra el puente TCP y el IDE antes de conectar el .exe al COM — solo

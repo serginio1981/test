@@ -105,7 +105,7 @@ def elegir_puerto(explicito):
         print('  - En WSL2 hay que engancharlo desde Windows con usbipd, o')
         print('    usar el puente TCP sin admin: ejecuta puente_com_tcp.py en')
         print('    Windows y conecta con -p socket://<ip>:8765')
-        print('    (mira arduino/ubuntu_app/README.md).')
+        print('    (mira arduino/apps/README.md).')
         print('  - En WSL1 los COM de Windows son /dev/ttyS<n> (COM3 = ttyS3);')
         print('    en ese caso indícalo con -p /dev/ttyS3.')
         sys.exit(1)

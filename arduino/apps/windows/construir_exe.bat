@@ -1,10 +1,10 @@
 @echo off
 REM Construye PanelArduino.exe portable (sin admin) a partir de panel_arduino.py
 REM Requisitos: Python en Windows (Store o instalado solo para tu usuario).
-REM Uso: doble clic, o desde PowerShell:  .\construir_exe.bat
+REM Uso: doble clic, o desde PowerShell:  .\windows\construir_exe.bat
 REM El resultado queda en dist\PanelArduino.exe — un unico archivo portable.
 
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 echo Instalando dependencias (solo para tu usuario, sin admin)...
 python -m pip install --user --quiet pyserial pyinstaller

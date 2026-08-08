@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'arduino/ubuntu_app/panel_arduino.py'
+      - 'arduino/apps/panel_arduino.py'
       - '.github/workflows/build-panel-arduino-exe.yml'
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
       - name: Build portable exe
         run: >
           pyinstaller --onefile --windowed --name PanelArduino
-          --clean --noconfirm arduino/ubuntu_app/panel_arduino.py
+          --clean --noconfirm arduino/apps/panel_arduino.py
 
       - name: Smoke check
         run: |
