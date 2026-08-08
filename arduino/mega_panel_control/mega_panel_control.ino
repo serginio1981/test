@@ -30,14 +30,25 @@
  *      de tensión con dos resistencias iguales y multiplica x2 la lectura)
  *
  * Librerías necesarias (Gestor de librerías del IDE de Arduino):
- *   - Adafruit SSD1306
  *   - Adafruit GFX Library
+ *   - Adafruit SH110X   (pantallas SH1106; es la opcion por defecto)
+ *   - Adafruit SSD1306  (solo si comentas PANTALLA_SH1106)
  *   - Servo (viene incluida con el IDE)
  */
 
 #include <Wire.h>
 #include <Adafruit_GFX.h>
+// --- Elige el chip de tu pantalla OLED ---
+// Con PANTALLA_SH1106 activo usa la libreria "Adafruit SH110X" (pantallas
+// de 1.3" o mas que muestran "nieve" con la SSD1306). Comenta la linea
+// para volver a SSD1306 (las tipicas de 0.96").
+#define PANTALLA_SH1106
+
+#ifdef PANTALLA_SH1106
+#include <Adafruit_SH110X.h>
+#else
 #include <Adafruit_SSD1306.h>
+#endif
 #include <Servo.h>
 
 // --- Pines ---
@@ -50,7 +61,22 @@ const uint8_t PIN_SOLAR       = A0;
 // --- Pantalla ---
 const uint8_t ANCHO_OLED = 128;
 const uint8_t ALTO_OLED  = 64;      // si tu OLED es de 128x32, cambia a 32
+#ifdef PANTALLA_SH1106
+Adafruit_SH1106G oled(ANCHO_OLED, ALTO_OLED, &Wire, -1);
+#define COLOR_OLED SH110X_WHITE
+#else
 Adafruit_SSD1306 oled(ANCHO_OLED, ALTO_OLED, &Wire, -1);
+#define COLOR_OLED SSD1306_WHITE
+#endif
+
+// begin() cambia de firma entre las dos librerias
+bool iniciarOled() {
+#ifdef PANTALLA_SH1106
+  return oled.begin(0x3C, true);   // direccion, reset
+#else
+  return oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+#endif
+}
 
 // --- Estado ---
 Servo servo;
@@ -72,12 +98,12 @@ void setup() {
   servo.write(angulo);
 
   // 0x3C es la dirección I2C habitual de estos módulos (a veces 0x3D)
-  if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+  if (!iniciarOled()) {
     Serial.println(F("No se encuentra la OLED. Revisa cableado y direccion."));
     while (true) { delay(100); }
   }
   oled.clearDisplay();
-  oled.setTextColor(SSD1306_WHITE);
+  oled.setTextColor(COLOR_OLED);
   oled.setTextSize(1);
   oled.setCursor(0, 0);
   oled.println(F("Estacion lista"));
@@ -156,7 +182,7 @@ void dibujarPantalla(int ang, float voltios) {
   // Barra proporcional al ángulo en el borde derecho
   int altoBarra = map(ang, 0, 180, 0, ALTO_OLED);
   oled.fillRect(ANCHO_OLED - 6, ALTO_OLED - altoBarra, 6, altoBarra,
-                SSD1306_WHITE);
+                COLOR_OLED);
 
   oled.display();
 }

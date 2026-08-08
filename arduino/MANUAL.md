@@ -76,8 +76,11 @@ Se sube **desde el IDE de Arduino en Windows** (WSL no ve el USB directamente):
 
 1. Instala el [IDE de Arduino](https://www.arduino.cc/en/software) (hay versión
    .zip portable si no tienes admin).
-2. *Herramientas → Gestor de librerías*: instala **Adafruit SSD1306** y
-   **Adafruit GFX Library** (la de *Servo* ya viene incluida).
+2. *Herramientas → Gestor de librerías*: instala **Adafruit SH110X** y
+   **Adafruit GFX Library** (la de *Servo* ya viene incluida). El sketch
+   viene configurado para pantallas con chip **SH1106** (`#define
+   PANTALLA_SH1106`); si la tuya es una SSD1306 de 0.96", comenta esa
+   línea e instala **Adafruit SSD1306** en su lugar.
 3. Abre el `.ino`, elige placa **Arduino Mega or Mega 2560** y puerto **COM4**
    (el que diga *USB* / *CH340*).
 4. Pulsa subir (→). Al terminar, la OLED muestra «Estacion lista».
@@ -176,6 +179,7 @@ Todos reales — pasaron durante el montaje original:
 | No sé qué COM es el Arduino | Varios puertos serie | `python -m serial.tools.list_ports -v` → el CH340 |
 | El IDE no puede subir el sketch | El puente tiene el COM abierto | Ctrl+C al puente, sube, relanza |
 | «No se encuentra la OLED» | Dirección I²C distinta o SDA/SCL cruzados | Revisa 20/21; si sigue, cambia `0x3C` por `0x3D` |
+| La OLED muestra «nieve» (píxeles al azar) | El chip es SH1106, no SSD1306 — recibe alimentación pero ignora la imagen | Deja activo `#define PANTALLA_SH1106` e instala la librería **Adafruit SH110X**. Confírmalo antes con [`escaner_i2c/`](escaner_i2c/): si responde en 0x3C y aun así hay nieve, es esto |
 | El servo tiembla o el MEGA se reinicia | El USB no da para los picos del servo | Si molesta, fuente externa de 5 V para el servo (GND común) |
 | La IP de WSL cambió | WSL estrena IP en cada reinicio (NAT) | La CLI imprime la nueva al arrancar; en mirrored no aplica |
 
