@@ -35,13 +35,18 @@ BAUDIOS = 9600
 NOMBRES_MODO = ['Apagado', 'Encendido', 'Parpadeo lento', 'Parpadeo rápido']
 
 
+PLACAS = ['Automática (mostrar todo)', 'Arduino MEGA 2560', 'Arduino UNO']
+
+
 def puertos_disponibles():
-    """Devuelve los puertos serie candidatos (Arduino suele ser ttyUSB/ttyACM)."""
+    """[(dispositivo, descripción), ...] — como el menú de puertos del IDE."""
     puertos = []
     if list_ports is not None:
-        puertos = [p.device for p in list_ports.comports()]
+        puertos = [(p.device, p.description or '')
+                   for p in list_ports.comports()]
     if not puertos:  # plan B por si list_ports no ve nada
-        puertos = sorted(glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*'))
+        puertos = [(d, '') for d in
+                   sorted(glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*'))]
     return puertos
 
 
@@ -49,7 +54,7 @@ class PanelArduino(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title('Panel Arduino')
-        self.minsize(520, 560)
+        self.minsize(600, 700)
 
         self.conexion = None
         self.hilo_lectura = None
@@ -77,36 +82,56 @@ class PanelArduino(tk.Tk):
         contenedor = ttk.Frame(self, padding=12)
         contenedor.pack(fill='both', expand=True)
 
-        # --- Conexión ---
-        marco_con = ttk.LabelFrame(contenedor, text='Conexión', padding=8)
+        # --- Administración: placa, puerto y velocidad (como el IDE) ---
+        marco_con = ttk.LabelFrame(contenedor,
+                                   text='Administración de conexión',
+                                   padding=8)
         marco_con.pack(fill='x')
 
-        ttk.Label(marco_con, text='Puerto:').grid(row=0, column=0, sticky='w')
-        # Editable: ademas de elegir un puerto detectado se puede escribir
-        # una URL de pyserial, p. ej. socket://192.168.1.10:8765
-        self.combo_puerto = ttk.Combobox(marco_con, width=18)
-        self.combo_puerto.grid(row=0, column=1, padx=6)
-
-        ttk.Button(marco_con, text='Buscar', command=self.refrescar_puertos)\
-            .grid(row=0, column=2, padx=2)
-        self.boton_conectar = ttk.Button(
-            marco_con, text='Conectar', command=self.alternar_conexion)
-        self.boton_conectar.grid(row=0, column=3, padx=2)
+        ttk.Label(marco_con, text='Placa:').grid(row=0, column=0, sticky='w')
+        self.combo_placa = ttk.Combobox(marco_con, state='readonly',
+                                        width=26, values=PLACAS)
+        self.combo_placa.set(PLACAS[0])
+        self.combo_placa.grid(row=0, column=1, padx=6, sticky='w')
+        self.combo_placa.bind('<<ComboboxSelected>>', self._aplicar_placa)
 
         self.etiqueta_estado = ttk.Label(marco_con, text='Desconectado',
                                          foreground='red')
-        self.etiqueta_estado.grid(row=0, column=4, padx=8)
+        self.etiqueta_estado.grid(row=0, column=2, columnspan=2,
+                                  padx=8, sticky='w')
+
+        ttk.Label(marco_con, text='Puerto:').grid(row=1, column=0,
+                                                  sticky='w', pady=(6, 0))
+        # Editable: ademas de elegir un puerto detectado se puede escribir
+        # una URL de pyserial, p. ej. socket://192.168.1.10:8765
+        self.combo_puerto = ttk.Combobox(marco_con, width=36)
+        self.combo_puerto.grid(row=1, column=1, padx=6, pady=(6, 0),
+                               sticky='w')
+        ttk.Button(marco_con, text='Buscar', command=self.refrescar_puertos)\
+            .grid(row=1, column=2, padx=2, pady=(6, 0))
+        self.boton_conectar = ttk.Button(
+            marco_con, text='Conectar', command=self.alternar_conexion)
+        self.boton_conectar.grid(row=1, column=3, padx=2, pady=(6, 0))
+
+        ttk.Label(marco_con, text='Baudios:').grid(row=2, column=0,
+                                                   sticky='w', pady=(6, 0))
+        self.combo_baudios = ttk.Combobox(
+            marco_con, state='readonly', width=10,
+            values=['9600', '19200', '38400', '57600', '115200'])
+        self.combo_baudios.set(str(BAUDIOS))
+        self.combo_baudios.grid(row=2, column=1, padx=6, pady=(6, 0),
+                                sticky='w')
 
         # --- UNO: LED ---
-        marco_led = ttk.LabelFrame(
+        self.marco_led = ttk.LabelFrame(
             contenedor, text='Arduino UNO — LED (pulsador y OLED)', padding=8)
-        marco_led.pack(fill='x', pady=(10, 0))
+        self.marco_led.pack(fill='x', pady=(10, 0))
 
-        self.etiqueta_modo = ttk.Label(marco_led, text='Modo: —',
+        self.etiqueta_modo = ttk.Label(self.marco_led, text='Modo: —',
                                        font=('TkDefaultFont', 12, 'bold'))
         self.etiqueta_modo.pack(anchor='w')
 
-        fila_botones = ttk.Frame(marco_led)
+        fila_botones = ttk.Frame(self.marco_led)
         fila_botones.pack(fill='x', pady=(6, 0))
         for i, nombre in enumerate(NOMBRES_MODO):
             ttk.Button(fila_botones, text=nombre,
@@ -114,45 +139,45 @@ class PanelArduino(tk.Tk):
                 .pack(side='left', expand=True, fill='x', padx=2)
 
         # --- MEGA: servo + solar ---
-        marco_mega = ttk.LabelFrame(
+        self.marco_mega = ttk.LabelFrame(
             contenedor, text='Arduino MEGA — Servo y placa solar', padding=8)
-        marco_mega.pack(fill='x', pady=(10, 0))
+        self.marco_mega.pack(fill='x', pady=(10, 0))
 
-        self.etiqueta_angulo = ttk.Label(marco_mega, text='Ángulo: —',
+        self.etiqueta_angulo = ttk.Label(self.marco_mega, text='Ángulo: —',
                                          font=('TkDefaultFont', 12, 'bold'))
         self.etiqueta_angulo.pack(anchor='w')
 
         self.slider_angulo = ttk.Scale(
-            marco_mega, from_=0, to=180, orient='horizontal',
+            self.marco_mega, from_=0, to=180, orient='horizontal',
             command=self._slider_movido)
         self.slider_angulo.set(90)
         self.slider_angulo.pack(fill='x', pady=(4, 2))
         # Enviar solo al soltar, para no inundar el puerto serie
         self.slider_angulo.bind('<ButtonRelease-1>', self._slider_soltado)
 
-        ttk.Button(marco_mega, text='Centrar servo (90°)',
+        ttk.Button(self.marco_mega, text='Centrar servo (90°)',
                    command=lambda: self.enviar('C')).pack(anchor='w')
 
-        fila_solar = ttk.Frame(marco_mega)
+        fila_solar = ttk.Frame(self.marco_mega)
         fila_solar.pack(fill='x', pady=(8, 0))
         ttk.Label(fila_solar, text='Placa solar:').pack(side='left')
         self.etiqueta_solar = ttk.Label(fila_solar, text='— V',
                                         font=('TkDefaultFont', 12, 'bold'))
         self.etiqueta_solar.pack(side='left', padx=6)
-        self.barra_solar = ttk.Progressbar(marco_mega, maximum=5.0)
+        self.barra_solar = ttk.Progressbar(self.marco_mega, maximum=5.0)
         self.barra_solar.pack(fill='x', pady=(4, 0))
 
         # --- Multiusos: MPU-6050 (alarma / nivel / theremin) ---
-        marco_multi = ttk.LabelFrame(
+        self.marco_multi = ttk.LabelFrame(
             contenedor, text='Multiusos MPU-6050 (alarma, nivel, theremin)',
             padding=8)
-        marco_multi.pack(fill='x', pady=(10, 0))
+        self.marco_multi.pack(fill='x', pady=(10, 0))
 
-        self.etiqueta_multi = ttk.Label(marco_multi, text='Modo: —',
+        self.etiqueta_multi = ttk.Label(self.marco_multi, text='Modo: —',
                                         font=('TkDefaultFont', 12, 'bold'))
         self.etiqueta_multi.pack(anchor='w')
 
-        fila_multi = ttk.Frame(marco_multi)
+        fila_multi = ttk.Frame(self.marco_multi)
         fila_multi.pack(fill='x', pady=(6, 0))
         for i, nombre in enumerate(['Alarma', 'Nivel', 'Theremin']):
             ttk.Button(fila_multi, text=nombre,
@@ -163,25 +188,44 @@ class PanelArduino(tk.Tk):
             .pack(side='left', expand=True, fill='x', padx=2)
 
         # --- Consola ---
-        marco_log = ttk.LabelFrame(contenedor, text='Monitor serie', padding=8)
-        marco_log.pack(fill='both', expand=True, pady=(10, 0))
+        self.marco_log = ttk.LabelFrame(contenedor, text='Monitor serie', padding=8)
+        self.marco_log.pack(fill='both', expand=True, pady=(10, 0))
 
-        self.texto_log = tk.Text(marco_log, height=10, state='disabled',
+        self.texto_log = tk.Text(self.marco_log, height=10, state='disabled',
                                  wrap='none')
-        barra = ttk.Scrollbar(marco_log, command=self.texto_log.yview)
+        barra = ttk.Scrollbar(self.marco_log, command=self.texto_log.yview)
         self.texto_log.configure(yscrollcommand=barra.set)
         barra.pack(side='right', fill='y')
         self.texto_log.pack(fill='both', expand=True)
 
     # ------------------------------------------------------ Conexión
     def refrescar_puertos(self):
-        puertos = puertos_disponibles()
-        self.combo_puerto['values'] = puertos
-        if puertos and not self.combo_puerto.get():
-            self.combo_puerto.set(puertos[0])
-        if not puertos:
+        self._puertos = {}
+        for dispositivo, descripcion in puertos_disponibles():
+            texto = (f'{dispositivo} — {descripcion}' if descripcion
+                     else dispositivo)
+            self._puertos[texto] = dispositivo
+        self.combo_puerto['values'] = list(self._puertos)
+        if self._puertos and not self.combo_puerto.get():
+            self.combo_puerto.set(next(iter(self._puertos)))
+        if not self._puertos:
             self.registrar('No se ha encontrado ningún puerto. ¿Está '
                            'conectado el Arduino por USB?')
+
+    def _aplicar_placa(self, _evento=None):
+        """Muestra los paneles que corresponden a la placa elegida."""
+        placa = self.combo_placa.get()
+        for marco in (self.marco_led, self.marco_mega, self.marco_multi):
+            marco.pack_forget()
+        if 'UNO' in placa:
+            visibles = (self.marco_led,)
+        elif 'MEGA' in placa:
+            visibles = (self.marco_mega, self.marco_multi)
+        else:
+            visibles = (self.marco_led, self.marco_mega, self.marco_multi)
+        for marco in visibles:
+            marco.pack(fill='x', pady=(10, 0), before=self.marco_log)
+        self.registrar(f'Placa seleccionada: {placa}')
 
     def alternar_conexion(self):
         if self.conexion is not None:
@@ -192,18 +236,22 @@ class PanelArduino(tk.Tk):
     def conectar(self):
         if serial is None:
             return
-        puerto = self.combo_puerto.get()
+        # (la velocidad se toma del selector de baudios al conectar)
+        texto = self.combo_puerto.get().strip()
+        puerto = getattr(self, '_puertos', {}).get(texto) or \
+            texto.split(' — ')[0]
         if not puerto:
             messagebox.showwarning('Sin puerto',
                                    'Selecciona un puerto (botón Buscar).')
             return
         try:
+            baudios = int(self.combo_baudios.get() or BAUDIOS)
             if '://' in puerto:
                 self.conexion = serial.serial_for_url(puerto,
-                                                      baudrate=BAUDIOS,
+                                                      baudrate=baudios,
                                                       timeout=1)
             else:
-                self.conexion = serial.Serial(puerto, BAUDIOS, timeout=1)
+                self.conexion = serial.Serial(puerto, baudios, timeout=1)
         except (serial.SerialException, OSError, ValueError) as e:
             texto = str(e)
             if 'Permission' in texto or 'permission' in texto:
@@ -222,7 +270,7 @@ class PanelArduino(tk.Tk):
         self.boton_conectar.configure(text='Desconectar')
         self.etiqueta_estado.configure(text=f'Conectado a {puerto}',
                                        foreground='green')
-        self.registrar(f'Conectado a {puerto} @ {BAUDIOS} baudios')
+        self.registrar(f'Conectado a {puerto} @ {baudios} baudios')
         # El Arduino se reinicia al abrir el puerto: pedir estado tras 2 s
         self.after(2000, lambda: self.enviar('?'))
 
