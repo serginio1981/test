@@ -4,8 +4,9 @@
  * Mini estación de control que usa el resto de tu material:
  *   - Encoder rotativo: girándolo mueves el servo SG90 de 0 a 180 grados.
  *     Pulsando el eje del encoder, el servo vuelve a 90 (centro).
- *   - Pantalla OLED SSD1306 (I2C): muestra el ángulo del servo y el
- *     voltaje que entrega la placa solar.
+ *   - Pantalla OLED (I2C): muestra el ángulo del servo, el voltaje actual
+ *     de la placa solar y una gráfica con el histórico del voltaje de los
+ *     últimos 2 minutos (una muestra por segundo, escala fija 0-5 V).
  *   - Placa solar: se lee su voltaje por A0.
  *
  * Comandos por serie (9600 baudios), pensados para la app de escritorio:
@@ -86,6 +87,19 @@ const int PASO_GRADOS = 2;           // grados por "clic" del encoder
 unsigned long ultimoRefresco = 0;
 const unsigned long REFRESCO_MS = 100;
 
+// --- Histórico del voltaje para la gráfica ---
+// Una muestra por segundo; 120 muestras = los últimos 2 minutos.
+// Se guarda voltios*50 en un byte (0..250 equivale a 0.00..5.00 V).
+const uint8_t N_MUESTRAS = 120;
+uint8_t historial[N_MUESTRAS];
+uint8_t nMuestras = 0;
+unsigned long ultimaMuestra = 0;
+const unsigned long MUESTREO_MS = 1000;
+
+// Zona de la gráfica en pantalla (mitad inferior)
+const uint8_t GRAF_Y = 32;
+const uint8_t GRAF_ALTO = 32;
+
 void setup() {
   Serial.begin(9600);
 
@@ -124,6 +138,10 @@ void loop() {
   if (millis() - ultimoRefresco >= REFRESCO_MS) {
     ultimoRefresco = millis();
     float voltios = analogRead(PIN_SOLAR) * (5.0 / 1023.0);
+    if (millis() - ultimaMuestra >= MUESTREO_MS) {
+      ultimaMuestra = millis();
+      registrarMuestra(voltios);
+    }
     dibujarPantalla(angulo, voltios);
     Serial.print(F("ANGULO:"));
     Serial.println(angulo);
@@ -158,31 +176,59 @@ void leerEncoder() {
   angulo = constrain(angulo, 0, 180);
 }
 
+// Guarda una muestra al final del histórico, desplazando si está lleno
+void registrarMuestra(float voltios) {
+  uint8_t v = (uint8_t)constrain(voltios * 50.0, 0.0, 250.0);
+  if (nMuestras < N_MUESTRAS) {
+    historial[nMuestras++] = v;
+  } else {
+    memmove(historial, historial + 1, N_MUESTRAS - 1);
+    historial[N_MUESTRAS - 1] = v;
+  }
+}
+
 void dibujarPantalla(int ang, float voltios) {
   oled.clearDisplay();
 
+  // Mitad superior: valores actuales
   oled.setTextSize(1);
   oled.setCursor(0, 0);
-  oled.println(F("Servo (encoder):"));
+  oled.print(F("Servo: "));
+  oled.print(ang);
+  oled.print((char)247);             // símbolo de grados
 
   oled.setTextSize(2);
   oled.setCursor(0, 12);
-  oled.print(ang);
-  oled.print((char)247);             // símbolo de grados
-  oled.println();
-
-  oled.setTextSize(1);
-  oled.setCursor(0, 36);
-  oled.println(F("Placa solar:"));
-  oled.setTextSize(2);
-  oled.setCursor(0, 46);
   oled.print(voltios, 2);
   oled.print(F(" V"));
 
-  // Barra proporcional al ángulo en el borde derecho
-  int altoBarra = map(ang, 0, 180, 0, ALTO_OLED);
-  oled.fillRect(ANCHO_OLED - 6, ALTO_OLED - altoBarra, 6, altoBarra,
-                COLOR_OLED);
-
+  dibujarGrafica();
   oled.display();
+}
+
+// Gráfica del histórico de voltaje (escala fija 0..5 V) en la mitad
+// inferior. Las muestras nuevas entran por la derecha.
+void dibujarGrafica() {
+  oled.drawRect(0, GRAF_Y, ANCHO_OLED, GRAF_ALTO, COLOR_OLED);
+
+  // Marca de la mitad de escala (2.5 V): línea punteada
+  uint8_t yMitad = GRAF_Y + GRAF_ALTO / 2;
+  for (uint8_t x = 2; x < ANCHO_OLED - 2; x += 6) {
+    oled.drawPixel(x, yMitad, COLOR_OLED);
+  }
+
+  if (nMuestras < 2) {
+    return;                          // aún no hay curva que dibujar
+  }
+
+  const uint8_t altoUtil = GRAF_ALTO - 2;              // interior del marco
+  const uint8_t yBase = GRAF_Y + GRAF_ALTO - 2;        // borde inferior
+  // La última muestra cae pegada al borde derecho interior
+  int xBase = (ANCHO_OLED - 2) - (nMuestras - 1);
+
+  for (uint8_t i = 1; i < nMuestras; i++) {
+    int y1 = yBase - (int)((long)historial[i - 1] * (altoUtil - 1) / 250);
+    int y2 = yBase - (int)((long)historial[i] * (altoUtil - 1) / 250);
+    oled.drawLine(xBase + i - 1, y1, xBase + i, y2, COLOR_OLED);
+  }
 }
