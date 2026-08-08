@@ -12,6 +12,7 @@ permisos de administrador**, con apps de escritorio y de terminal.
 ```
 arduino/
 ├── MANUAL.md                ← empieza por aquí
+├── MANUAL_MEGA2560.md       Manual de la placa: specs, pines, ampliaciones
 ├── mega_panel_control/      Sketch principal del MEGA 2560
 ├── mpu_multiusos/           Sketch 3-en-1: alarma, nivel y theremin (MEGA)
 ├── uno_boton_led/           Sketch del UNO: pulsador + LED + OLED
@@ -37,6 +38,8 @@ arduino/
 | LED + resistencia 220 Ω | Sirena visual / indicador | `uno_boton_led`, `mpu_multiusos` |
 
 Cableado completo pin a pin: en [MANUAL.md](MANUAL.md#2-cableado-del-mega).
+Capacidades de la placa (¿tiene WiFi?, pines libres, cómo ampliarla):
+[MANUAL_MEGA2560.md](MANUAL_MEGA2560.md).
 
 ## Sketches
 
