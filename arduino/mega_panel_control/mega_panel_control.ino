@@ -80,6 +80,7 @@ bool iniciarOled() {
 }
 
 // --- Estado ---
+bool hayOled = false;                // la estacion funciona aunque no haya
 Servo servo;
 volatile int angulo = 90;            // lo modifica la interrupción del encoder
 const int PASO_GRADOS = 2;           // grados por "clic" del encoder
@@ -111,18 +112,22 @@ void setup() {
   servo.attach(PIN_SERVO);
   servo.write(angulo);
 
-  // 0x3C es la dirección I2C habitual de estos módulos (a veces 0x3D)
-  if (!iniciarOled()) {
-    Serial.println(F("No se encuentra la OLED. Revisa cableado y direccion."));
-    while (true) { delay(100); }
+  // 0x3C es la dirección I2C habitual de estos módulos (a veces 0x3D).
+  // Si la OLED falla, la estacion sigue: servo, encoder y comandos serie
+  // funcionan igual, solo que sin pantalla.
+  hayOled = iniciarOled();
+  if (!hayOled) {
+    Serial.println(F("Aviso: no se encuentra la OLED (la estacion sigue "
+                     "sin pantalla). Revisa cableado o direccion 0x3C/0x3D."));
+  } else {
+    oled.clearDisplay();
+    oled.setTextColor(COLOR_OLED);
+    oled.setTextSize(1);
+    oled.setCursor(0, 0);
+    oled.println(F("Estacion lista"));
+    oled.display();
+    delay(500);
   }
-  oled.clearDisplay();
-  oled.setTextColor(COLOR_OLED);
-  oled.setTextSize(1);
-  oled.setCursor(0, 0);
-  oled.println(F("Estacion lista"));
-  oled.display();
-  delay(500);
 }
 
 void loop() {
@@ -188,6 +193,9 @@ void registrarMuestra(float voltios) {
 }
 
 void dibujarPantalla(int ang, float voltios) {
+  if (!hayOled) {
+    return;
+  }
   oled.clearDisplay();
 
   // Mitad superior: valores actuales
