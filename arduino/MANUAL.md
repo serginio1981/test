@@ -201,8 +201,15 @@ Cableado adicional:
 |---|---|---|
 | MPU-6050 | VCC / GND | `5V` / `GND` |
 | | SDA / SCL | `20` / `21` (comparte bus con la OLED) |
-| Buzzer pasivo | S | `8` |
+| Buzzer pasivo (opcional) | S | `8` |
 | | − | `GND` |
+| LED «sirena visual» (opcional) | Ánodo + resistencia 220 Ω | `9` |
+| | Cátodo | `GND` |
+
+**¿Buzzer roto o sin buzzer?** Conecta el LED con su resistencia al pin 9 y
+hace de «sirena visual»: parpadeo rápido cuando salta la alarma, destello de
+vigilancia cada 2 s, LED fijo cuando el nivel está centrado (±2°) y brillo
+proporcional al tono en el theremin.
 
 El MPU-6050 se lee por I2C directo, sin librería extra. Si el módulo viene
 sin pines soldados, hay que soldárselos. Verifica que responde con

@@ -22,8 +22,14 @@
  *   MPU-6050 (I2C, convive con la OLED en el mismo bus):
  *     VCC -> 5V   GND -> GND   SDA -> pin 20   SCL -> pin 21
  *     (XDA, XCL, AD0, INT sin conectar)
- *   Buzzer pasivo:
+ *   Buzzer pasivo (opcional):
  *     S -> pin 8      - -> GND     (pin central: sin conectar)
+ *   LED "sirena visual" (opcional, para cuando no hay buzzer o esta roto):
+ *     anodo (pata larga) -> resistencia 220 ohm -> pin 9
+ *     catodo (pata corta) -> GND
+ *     Alarma: parpadeo rapido al dispararse y destello de vigilancia.
+ *     Nivel: LED fijo cuando esta nivelado (+-2 grados).
+ *     Theremin: el brillo sigue la inclinacion.
  *   Encoder EC11:
  *     lado de 3 pines: A -> pin 2, C (centro) -> GND, B -> pin 3
  *     lado de 2 pines: uno -> pin 4, el otro -> GND
@@ -50,6 +56,7 @@ const uint8_t PIN_ENCODER_CLK = 2;
 const uint8_t PIN_ENCODER_DT  = 3;
 const uint8_t PIN_ENCODER_SW  = 4;
 const uint8_t PIN_BUZZER      = 8;
+const uint8_t PIN_LED         = 9;   // LED con resistencia de 220 ohm (opcional)
 
 // --- Pantalla ---
 const uint8_t ANCHO_OLED = 128;
@@ -112,6 +119,7 @@ void setup() {
   pinMode(PIN_ENCODER_DT, INPUT_PULLUP);
   pinMode(PIN_ENCODER_SW, INPUT_PULLUP);
   pinMode(PIN_BUZZER, OUTPUT);
+  pinMode(PIN_LED, OUTPUT);
   attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_CLK), leerEncoder, FALLING);
 
   hayOled = iniciarOled();
@@ -137,7 +145,7 @@ void loop() {
 
   switch (modo) {
     case 0: correrAlarma(); break;
-    case 1: /* el nivel solo dibuja */ break;
+    case 1: correrNivel(); break;
     case 2: correrTheremin(); break;
   }
 
@@ -163,6 +171,7 @@ void atenderGiro() {
 
   modo = (modo + N_MODOS + (giro > 0 ? 1 : N_MODOS - 1)) % N_MODOS;
   noTone(PIN_BUZZER);                // corta lo que sonara del modo anterior
+  digitalWrite(PIN_LED, LOW);
   alarma = DESARMADA;                // cambiar de modo desarma por seguridad
   anunciarModo();
   pitido(440 + 220 * modo, 60);      // tono distinto por modo
@@ -199,6 +208,7 @@ void accionDelModo() {
       } else {
         alarma = DESARMADA;
         noTone(PIN_BUZZER);
+        digitalWrite(PIN_LED, LOW);
         Serial.println(F("ALARMA: desarmada."));
         pitido(600, 100);
       }
@@ -262,6 +272,17 @@ void leerInclinacion(float& pitch, float& roll) {
   roll  = atan2(ay, sqrt(ax * ax + az * az)) * 180.0 / PI;
 }
 
+// --------------------------------------------------------------- nivel
+void correrNivel() {
+  if (!hayMpu) {
+    return;
+  }
+  float pitch, roll;
+  leerInclinacion(pitch, roll);
+  bool nivelado = fabs(pitch - ceroPitch) < 2 && fabs(roll - ceroRoll) < 2;
+  digitalWrite(PIN_LED, nivelado);   // LED fijo = superficie nivelada
+}
+
 // -------------------------------------------------------------- alarma
 void correrAlarma() {
   if (!hayMpu || alarma == DESARMADA) {
@@ -273,6 +294,7 @@ void correrAlarma() {
     if ((millis() - inicioArmado) % 1000 < 60) {
       tone(PIN_BUZZER, 700, 50);
     }
+    digitalWrite(PIN_LED, (millis() - inicioArmado) % 500 < 250);
     if (millis() - inicioArmado >= 3000) {
       leerAcelG(baseX, baseY, baseZ);
       alarma = VIGILANDO;
@@ -283,6 +305,8 @@ void correrAlarma() {
   }
 
   if (alarma == VIGILANDO) {
+    // destello corto cada 2 s: "estoy vigilando"
+    digitalWrite(PIN_LED, millis() % 2000 < 60);
     float ax, ay, az;
     if (!leerAcelG(ax, ay, az)) {
       return;
@@ -295,13 +319,16 @@ void correrAlarma() {
     return;
   }
 
-  // DISPARADA: sirena de dos tonos hasta que pulsen el boton
+  // DISPARADA: sirena de dos tonos (si hay buzzer) y LED a destellos
+  // rapidos (sirena visual) hasta que pulsen el boton
   tone(PIN_BUZZER, (millis() % 300 < 150) ? 800 : 1200);
+  digitalWrite(PIN_LED, millis() % 160 < 80);
 }
 
 // ------------------------------------------------------------ theremin
 void correrTheremin() {
   if (!hayMpu || silenciado) {
+    analogWrite(PIN_LED, 0);
     return;
   }
   float pitch, roll;
@@ -309,6 +336,8 @@ void correrTheremin() {
   // -60..60 grados -> 200..1800 Hz
   int frecuencia = map((int)constrain(pitch, -60, 60), -60, 60, 200, 1800);
   tone(PIN_BUZZER, frecuencia);
+  // sin buzzer tambien se "ve" la nota: el brillo del LED sigue el tono
+  analogWrite(PIN_LED, map(frecuencia, 200, 1800, 5, 255));
 }
 
 void pitido(int frecuencia, int ms) {
