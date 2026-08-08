@@ -183,7 +183,32 @@ Todos reales — pasaron durante el montaje original:
 | El servo tiembla o el MEGA se reinicia | El USB no da para los picos del servo | Si molesta, fuente externa de 5 V para el servo (GND común) |
 | La IP de WSL cambió | WSL estrena IP en cada reinicio (NAT) | La CLI imprime la nueva al arrancar; en mirrored no aplica |
 
-## 9. Extra: el Arduino UNO
+## 9. Extra: sketch multiusos con MPU-6050 y buzzer
+
+[`mpu_multiusos/`](mpu_multiusos/) reúne tres proyectos en un sketch, usando
+el acelerómetro MPU-6050, el buzzer pasivo, el encoder y la OLED (opcional).
+**Girar el encoder cambia de modo; pulsarlo hace la acción del modo:**
+
+| Modo | Qué hace | El botón... |
+|---|---|---|
+| 🚨 Alarma | Pita 3 s, memoriza la posición y suena si algo se mueve | Arma / desarma |
+| 🫧 Nivel | Burbuja en la OLED según la inclinación | Calibra el cero |
+| 🎵 Theremin | El tono del buzzer sigue la inclinación | Silencia |
+
+Cableado adicional:
+
+| Componente | Pin | MEGA |
+|---|---|---|
+| MPU-6050 | VCC / GND | `5V` / `GND` |
+| | SDA / SCL | `20` / `21` (comparte bus con la OLED) |
+| Buzzer pasivo | S | `8` |
+| | − | `GND` |
+
+El MPU-6050 se lee por I2C directo, sin librería extra. Si el módulo viene
+sin pines soldados, hay que soldárselos. Verifica que responde con
+[`escaner_i2c/`](escaner_i2c/): debe aparecer en `0x68` (y la OLED en `0x3C`).
+
+## 10. Extra: el Arduino UNO
 
 El UNO tiene su propio sketch ([`uno_boton_led/`](uno_boton_led/)): pulsador +
 LED en la protoboard y la misma OLED, con 4 modos de LED (botón físico o
