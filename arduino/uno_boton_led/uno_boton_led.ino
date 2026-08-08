@@ -22,12 +22,23 @@
  *   ?                  -> reenvía el estado actual
  * El estado se publica como lineas "MODO:n" para que sea facil de parsear.
  *
- * Librerías (Gestor de librerías del IDE): Adafruit SSD1306 y Adafruit GFX.
+ * Librerías (Gestor de librerías del IDE): Adafruit GFX y Adafruit SH110X
+ * (o Adafruit SSD1306 si comentas PANTALLA_SH1106).
  */
 
 #include <Wire.h>
 #include <Adafruit_GFX.h>
+// --- Elige el chip de tu pantalla OLED ---
+// Con PANTALLA_SH1106 activo usa la libreria "Adafruit SH110X" (pantallas
+// de 1.3" o mas que muestran "nieve" con la SSD1306). Comenta la linea
+// para volver a SSD1306 (las tipicas de 0.96").
+#define PANTALLA_SH1106
+
+#ifdef PANTALLA_SH1106
+#include <Adafruit_SH110X.h>
+#else
 #include <Adafruit_SSD1306.h>
+#endif
 
 const uint8_t PIN_LED = 9;     // pin con PWM, por si quieres regular brillo
 const uint8_t PIN_BOTON = 2;
@@ -36,7 +47,22 @@ const unsigned long DEBOUNCE_MS = 30;
 
 const uint8_t ANCHO_OLED = 128;
 const uint8_t ALTO_OLED  = 64;      // si tu OLED es de 128x32, cambia a 32
+#ifdef PANTALLA_SH1106
+Adafruit_SH1106G oled(ANCHO_OLED, ALTO_OLED, &Wire, -1);
+#define COLOR_OLED SH110X_WHITE
+#else
 Adafruit_SSD1306 oled(ANCHO_OLED, ALTO_OLED, &Wire, -1);
+#define COLOR_OLED SSD1306_WHITE
+#endif
+
+// begin() cambia de firma entre las dos librerias
+bool iniciarOled() {
+#ifdef PANTALLA_SH1106
+  return oled.begin(0x3C, true);   // direccion, reset
+#else
+  return oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+#endif
+}
 bool hayOled = false;
 
 uint8_t modo = 0;                    // 0..3
@@ -64,7 +90,7 @@ void setup() {
 
   // 0x3C es la dirección I2C habitual de estos módulos (a veces 0x3D).
   // Si no hay OLED conectada el programa sigue funcionando igualmente.
-  hayOled = oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  hayOled = iniciarOled();
   if (!hayOled) {
     Serial.println(F("Aviso: no se encuentra la OLED (se sigue sin ella)."));
   }
@@ -155,7 +181,7 @@ void dibujarPantalla() {
     return;
   }
   oled.clearDisplay();
-  oled.setTextColor(SSD1306_WHITE);
+  oled.setTextColor(COLOR_OLED);
 
   oled.setTextSize(1);
   oled.setCursor(0, 0);
@@ -170,8 +196,8 @@ void dibujarPantalla() {
   // Barra de progreso segun el modo (0 a 3)
   const uint8_t altoBarra = 8;
   uint8_t ancho = map(modo, 0, 3, 0, ANCHO_OLED);
-  oled.drawRect(0, ALTO_OLED - altoBarra, ANCHO_OLED, altoBarra, SSD1306_WHITE);
-  oled.fillRect(0, ALTO_OLED - altoBarra, ancho, altoBarra, SSD1306_WHITE);
+  oled.drawRect(0, ALTO_OLED - altoBarra, ANCHO_OLED, altoBarra, COLOR_OLED);
+  oled.fillRect(0, ALTO_OLED - altoBarra, ancho, altoBarra, COLOR_OLED);
 
   oled.display();
 }
