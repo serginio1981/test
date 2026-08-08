@@ -6,6 +6,8 @@ administrador en Windows**.
 
 > Versión web ilustrada del manual: página privada en Claude Artifacts
 > (pídele el enlace al autor). Este documento es la versión de referencia del repo.
+> Ficha técnica de la placa (specs, pines libres, cómo añadir WiFi/Bluetooth):
+> [MANUAL_MEGA2560.md](MANUAL_MEGA2560.md).
 
 ## Índice
 
