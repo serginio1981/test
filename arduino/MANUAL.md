@@ -214,6 +214,9 @@ proporcional al tono en el theremin.
 El MPU-6050 se lee por I2C directo, sin librería extra. Si el módulo viene
 sin pines soldados, hay que soldárselos. Verifica que responde con
 [`escaner_i2c/`](escaner_i2c/): debe aparecer en `0x68` (y la OLED en `0x3C`).
+Para validar que además mide bien, sube [`prueba_mpu6050/`](prueba_mpu6050/)
+y comprueba en el Monitor Serie que en plano marca `Z: 1.00` y que los
+valores cambian al inclinarlo.
 
 ## 10. Extra: el Arduino UNO
 
