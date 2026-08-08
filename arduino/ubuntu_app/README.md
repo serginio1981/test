@@ -137,10 +137,39 @@ sirve por TCP para que la CLI de WSL se conecte por red.
 > La velocidad (baudios) la fija el **puente** con su opción `-b`; el `-b`
 > de la CLI no viaja por `socket://`.
 
-Si la conexión se queda colgada, casi seguro es el **firewall de Windows**
-bloqueando la entrada desde WSL. Sin admin no puedes abrir el puerto en el
-firewall, pero hay un rodeo sin admin: el modo **mirrored** de WSL, en el
-que Windows y WSL comparten localhost y el firewall no interviene.
+### Si `socket://` da "timed out": modo inverso (`-c` / `escuchar://`)
+
+Ese timeout es el **firewall de Windows** bloqueando la entrada desde WSL,
+y sin admin no puedes abrirle el puerto. El rodeo más fiable es **invertir
+el sentido de la conexión**: WSL→Windows está bloqueado, pero
+Windows→WSL pasa siempre. La CLI se pone a escuchar y el puente se conecta
+a ella. Funciona en cualquier Windows (10 u 11), sin tocar nada.
+
+1. En **WSL/Ubuntu** (primero):
+
+   ```bash
+   python3 panel_arduino_cli.py -p escuchar://:8765
+   ```
+
+   Al arrancar imprime el comando exacto que hay que lanzar en Windows,
+   con tu IP de WSL ya puesta.
+
+2. En **Windows** (después):
+
+   ```powershell
+   python puente_com_tcp.py COM4 -c <IP-de-WSL>:8765
+   ```
+
+   Si el puente arranca antes que la CLI no pasa nada: reintenta cada 2 s
+   hasta que la CLI aparezca.
+
+> La IP de WSL cambia en cada reinicio de WSL (también la ves con
+> `hostname -I`). Si un día no conecta, vuelve a mirar la IP.
+
+### Alternativa: modo mirrored (solo Windows 11)
+
+Otro rodeo sin admin es el modo **mirrored** de WSL, en el que Windows y
+WSL comparten localhost y el firewall no interviene.
 Requiere **Windows 11 22H2+ y WSL 2.0+**; actualiza y comprueba primero
 (ninguno de los dos pide admin):
 

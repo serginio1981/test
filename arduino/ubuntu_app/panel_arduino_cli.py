@@ -26,6 +26,10 @@ Opciones:
                      /dev/ttyS3              (WSL1: COM3 de Windows)
                      COM3                    (Windows nativo)
                      socket://<ip>:8765      (puente puente_com_tcp.py)
+                     escuchar://:8765        (modo inverso: la CLI espera y
+                                              el puente se conecta; usar si
+                                              el firewall de Windows corta
+                                              socket:// con "timed out")
     -b / --baudios velocidad (por defecto 9600; con socket:// la fija el
                    puente, no esta opción)
     -e / --espera  segundos de espera tras abrir el puerto (por defecto 2.0
@@ -37,6 +41,7 @@ Requisitos: sudo apt install python3-serial   (o: pip install pyserial)
 
 import argparse
 import glob
+import socket
 import sys
 import time
 
@@ -107,6 +112,90 @@ def elegir_puerto(explicito):
     return puertos[0]
 
 
+def _ip_local():
+    """IP de esta máquina (la de WSL vista desde Windows)."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(('10.255.255.255', 1))   # no envía nada; solo elige ruta
+        return s.getsockname()[0]
+    except OSError:
+        return '<IP-de-WSL: hostname -I>'
+    finally:
+        s.close()
+
+
+class ConexionEscucha:
+    """Modo inverso: la CLI escucha y el puente de Windows se conecta aquí.
+
+    El firewall de Windows suele bloquear WSL->Windows, pero Windows->WSL
+    pasa siempre. Imita la parte de serial.Serial que usa este script
+    (readline / write / reset_input_buffer / close).
+    """
+
+    def __init__(self, direccion, puerto):
+        servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            servidor.bind((direccion, puerto))
+        except OSError as e:
+            print(f'No se pudo escuchar en el puerto {puerto}: {e}')
+            sys.exit(1)
+        servidor.listen(1)
+        print(f'Esperando al puente... Lanza en Windows (PowerShell):')
+        print(f'  python puente_com_tcp.py COM4 -c {_ip_local()}:{puerto}')
+        print('(Ctrl+C para cancelar)')
+        try:
+            self._sock, origen = servidor.accept()
+        except KeyboardInterrupt:
+            print('\nCancelado.')
+            servidor.close()
+            sys.exit(1)
+        servidor.close()
+        print(f'Puente conectado desde {origen[0]}')
+        self._sock.settimeout(0.5)
+        self._buf = b''
+
+    def readline(self):
+        while b'\n' not in self._buf:
+            try:
+                datos = self._sock.recv(1024)
+            except socket.timeout:
+                return b''                    # como serial.Serial con timeout
+            except OSError as e:
+                raise serial.SerialException(
+                    f'se perdió la conexión con el puente: {e}')
+            if not datos:
+                raise serial.SerialException('el puente cerró la conexión')
+            self._buf += datos
+        linea, self._buf = self._buf.split(b'\n', 1)
+        return linea + b'\n'
+
+    def write(self, datos):
+        try:
+            self._sock.sendall(datos)
+        except OSError as e:
+            raise serial.SerialException(
+                f'se perdió la conexión con el puente: {e}')
+        return len(datos)
+
+    def reset_input_buffer(self):
+        self._buf = b''
+        self._sock.setblocking(False)
+        try:
+            while self._sock.recv(4096):
+                pass
+        except (BlockingIOError, OSError):
+            pass
+        finally:
+            self._sock.settimeout(0.5)
+
+    def close(self):
+        try:
+            self._sock.close()
+        except OSError:
+            pass
+
+
 def abrir(puerto, baudios, espera):
     if serial is None:
         print('Falta el módulo pyserial. Instálalo con:')
@@ -114,7 +203,13 @@ def abrir(puerto, baudios, espera):
         sys.exit(1)
     es_url = '://' in puerto
     try:
-        if es_url:
+        if puerto.startswith('escuchar://'):
+            # Modo inverso: nosotros escuchamos y el puente se conecta.
+            resto = puerto[len('escuchar://'):]
+            host, _, p = resto.rpartition(':')
+            con = ConexionEscucha(host or '0.0.0.0',
+                                  int(p) if p.isdigit() else 8765)
+        elif es_url:
             # URL de pyserial, p. ej. socket://192.168.1.10:8765
             # (para el puente COM<->TCP de puente_com_tcp.py desde WSL)
             con = serial.serial_for_url(puerto, timeout=0.5)
