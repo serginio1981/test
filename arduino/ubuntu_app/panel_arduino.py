@@ -82,7 +82,9 @@ class PanelArduino(tk.Tk):
         marco_con.pack(fill='x')
 
         ttk.Label(marco_con, text='Puerto:').grid(row=0, column=0, sticky='w')
-        self.combo_puerto = ttk.Combobox(marco_con, state='readonly', width=18)
+        # Editable: ademas de elegir un puerto detectado se puede escribir
+        # una URL de pyserial, p. ej. socket://192.168.1.10:8765
+        self.combo_puerto = ttk.Combobox(marco_con, width=18)
         self.combo_puerto.grid(row=0, column=1, padx=6)
 
         ttk.Button(marco_con, text='Buscar', command=self.refrescar_puertos)\
@@ -176,8 +178,13 @@ class PanelArduino(tk.Tk):
                                    'Selecciona un puerto (botón Buscar).')
             return
         try:
-            self.conexion = serial.Serial(puerto, BAUDIOS, timeout=1)
-        except serial.SerialException as e:
+            if '://' in puerto:
+                self.conexion = serial.serial_for_url(puerto,
+                                                      baudrate=BAUDIOS,
+                                                      timeout=1)
+            else:
+                self.conexion = serial.Serial(puerto, BAUDIOS, timeout=1)
+        except (serial.SerialException, OSError, ValueError) as e:
             texto = str(e)
             if 'Permission' in texto or 'permission' in texto:
                 texto += ('\n\nEn Ubuntu, añade tu usuario al grupo dialout:\n'
