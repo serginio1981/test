@@ -99,6 +99,30 @@ El puerto se autodetecta; si hay varios, o usas WSL1, indícalo con
 `-p /dev/ttyS3`, por ejemplo. El programa espera 2 s tras abrir el puerto
 porque el Arduino se reinicia al conectar (ajustable con `-e`).
 
+## App portable para Windows (`PanelArduino.exe`)
+
+La interfaz gráfica también existe como **ejecutable portable de Windows**:
+un único `PanelArduino.exe` que no necesita Python, ni instalación, ni
+permisos de administrador — cópialo a cualquier carpeta (o un USB) y doble
+clic. Se conecta directo al COM del Arduino e incluye los controles del
+sketch multiusos (modos Alarma/Nivel/Theremin, botón Pulsar) y hace sonar
+la alarma en Windows cuando el MEGA la dispara.
+
+Dos maneras de conseguir el .exe:
+
+1. **Descargarlo de GitHub Actions** (recomendado): pestaña **Actions** del
+   repo → workflow *Build PanelArduino.exe* → última ejecución → sección
+   **Artifacts** → `PanelArduino-windows-portable`. (Si no hay ninguna
+   ejecución, lánzala con *Run workflow*.)
+2. **Construirlo tú mismo** (sin admin, ~2 min): doble clic a
+   [`construir_exe.bat`](construir_exe.bat) en esta carpeta. Deja el
+   resultado en `dist\PanelArduino.exe`.
+
+> ⚠️ Cierra el puente TCP y el IDE antes de conectar el .exe al COM — solo
+> un programa puede usar el puerto a la vez. Y al ser un .exe sin firmar,
+> Windows SmartScreen puede avisar la primera vez: «Más información →
+> Ejecutar de todas formas» (no pide admin).
+
 ## Medidor analógico de CPU (`medidor_cpu.py`)
 
 Convierte el servo en un vúmetro físico del PC: 0% de CPU = 0°, 100% = 180°.

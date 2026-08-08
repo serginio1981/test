@@ -142,6 +142,26 @@ class PanelArduino(tk.Tk):
         self.barra_solar = ttk.Progressbar(marco_mega, maximum=5.0)
         self.barra_solar.pack(fill='x', pady=(4, 0))
 
+        # --- Multiusos: MPU-6050 (alarma / nivel / theremin) ---
+        marco_multi = ttk.LabelFrame(
+            contenedor, text='Multiusos MPU-6050 (alarma, nivel, theremin)',
+            padding=8)
+        marco_multi.pack(fill='x', pady=(10, 0))
+
+        self.etiqueta_multi = ttk.Label(marco_multi, text='Modo: —',
+                                        font=('TkDefaultFont', 12, 'bold'))
+        self.etiqueta_multi.pack(anchor='w')
+
+        fila_multi = ttk.Frame(marco_multi)
+        fila_multi.pack(fill='x', pady=(6, 0))
+        for i, nombre in enumerate(['Alarma', 'Nivel', 'Theremin']):
+            ttk.Button(fila_multi, text=nombre,
+                       command=lambda n=i: self.enviar(f'M{n}'))\
+                .pack(side='left', expand=True, fill='x', padx=2)
+        ttk.Button(fila_multi, text='Pulsar (armar/accion)',
+                   command=lambda: self.enviar('P'))\
+            .pack(side='left', expand=True, fill='x', padx=2)
+
         # --- Consola ---
         marco_log = ttk.LabelFrame(contenedor, text='Monitor serie', padding=8)
         marco_log.pack(fill='both', expand=True, pady=(10, 0))
@@ -259,13 +279,25 @@ class PanelArduino(tk.Tk):
             return
         self.registrar(f'<- {linea}')
 
-        if linea.startswith('MODO:'):
+        if linea.startswith('EVENTO:ALARMA'):
+            self.etiqueta_multi.configure(
+                text='🚨 ALARMA: MOVIMIENTO DETECTADO', foreground='red')
+            self._sonar_alarma()
+        elif linea.startswith('MODO:'):
+            partes = linea.split(':', 1)[1].split()
             try:
-                modo = int(linea.split(':', 1)[1])
-                self.etiqueta_modo.configure(
-                    text=f'Modo: {modo} — {NOMBRES_MODO[modo]}')
+                modo = int(partes[0])
             except (ValueError, IndexError):
-                pass
+                return
+            if len(partes) > 1:          # sketch multiusos: "MODO:0 ALARMA"
+                self.etiqueta_multi.configure(
+                    text=f'Modo: {partes[1]}', foreground='')
+            else:                        # sketch del UNO: "MODO:n"
+                try:
+                    self.etiqueta_modo.configure(
+                        text=f'Modo: {modo} — {NOMBRES_MODO[modo]}')
+                except IndexError:
+                    pass
         elif linea.startswith('ANGULO:'):
             try:
                 angulo = int(linea.split(':', 1)[1])
@@ -292,6 +324,18 @@ class PanelArduino(tk.Tk):
 
     def _slider_soltado(self, _evento):
         self.enviar(f'A{int(float(self.slider_angulo.get()))}')
+
+    def _sonar_alarma(self):
+        """Pitidos de alarma sin bloquear la interfaz."""
+        def _beeps():
+            try:
+                import winsound
+                for _ in range(4):
+                    winsound.Beep(1000, 180)
+                    winsound.Beep(1400, 180)
+            except ImportError:
+                print('\a', end='', flush=True)
+        threading.Thread(target=_beeps, daemon=True).start()
 
     # ------------------------------------------------------------ Log
     def registrar(self, texto):
