@@ -23,6 +23,21 @@ sección "Puertos (COM y LPT)" — el MEGA clon aparece como USB-SERIAL CH340.
 La velocidad (baudios) la fija ESTE script con -b; el -b de la CLI no
 viaja por la red (pyserial lo ignora en conexiones socket://).
 
+MODO INVERSO (-c): si el firewall de Windows bloquea la conexión desde WSL
+(síntoma: "timed out" en la CLI), invierte el sentido — Windows hacia WSL
+está permitido siempre. La CLI se pone a escuchar y este puente se conecta
+a ella:
+
+    En WSL/Ubuntu (primero):
+        hostname -I | awk '{print $1}'          # IP de WSL, p. ej. 172.17.130.5
+        python3 panel_arduino_cli.py -p escuchar://:8765
+
+    En Windows (después):
+        python puente_com_tcp.py COM4 -c <IP-de-WSL>:8765
+
+Si la conexión falla, el puente reintenta cada 2 s, así que el orden de
+arranque no es crítico. Ojo: la IP de WSL cambia en cada reinicio.
+
 Con WSL en modo "mirrored" (Windows 11: añade networkingMode=mirrored a
 %UserProfile%\\.wslconfig y ejecuta `wsl --shutdown`), ambos comparten
 localhost: lanza el puente con `-d 127.0.0.1` y conecta desde WSL a
@@ -41,6 +56,7 @@ import os
 import socket
 import sys
 import threading
+import time
 
 try:
     import serial
@@ -113,6 +129,54 @@ def atender_cliente(cliente, con):
     return not serie_rota.is_set()
 
 
+def modo_inverso(con, destino):
+    """El puente se conecta a la CLI (que escucha), en vez de al revés.
+
+    Esquiva el firewall de Windows: WSL->Windows suele estar bloqueado,
+    pero Windows->WSL está permitido.
+    """
+    host, _, puerto = destino.rpartition(':')
+    if not host or not puerto.isdigit():
+        print('Formato de -c: IP:puerto, p. ej. 172.17.130.5:8765')
+        print('La IP de WSL se ve desde Ubuntu con:  hostname -I')
+        sys.exit(1)
+    objetivo = (host, int(puerto))
+
+    print(f'Modo inverso: conectando a {host}:{puerto} ...')
+    print('(en WSL debe estar corriendo: '
+          f'python3 panel_arduino_cli.py -p escuchar://:{puerto})')
+    print('(Ctrl+C para terminar)')
+
+    avisado = False
+    try:
+        while True:
+            try:
+                cliente = socket.create_connection(objetivo, timeout=3)
+            except OSError:
+                if not avisado:
+                    print(f'Todavía no responde {host}:{puerto}; '
+                          'reintento cada 2 s...')
+                    avisado = True
+                time.sleep(2)
+                continue
+            avisado = False
+            print(f'Conectado a {host}:{puerto}')
+            try:
+                con.reset_input_buffer()
+            except ERRORES_SERIE:
+                cliente.close()
+                break
+            if not atender_cliente(cliente, con):
+                break
+            print('La CLI se desconectó. Reintentando conexión...')
+    except KeyboardInterrupt:
+        print('\nCerrando puente.')
+        return
+    print('Se perdió el puerto serie (¿Arduino desenchufado?).')
+    print('Reconecta el USB y vuelve a lanzar el puente — ojo: el '
+          'número de COM puede cambiar.')
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Sirve un puerto COM/serie por TCP (para WSL sin admin).')
@@ -125,6 +189,10 @@ def main():
     parser.add_argument('-d', '--direccion', default='0.0.0.0',
                         help='dirección de escucha (por defecto todas; usa '
                              '127.0.0.1 con WSL en modo mirrored)')
+    parser.add_argument('-c', '--conectar', metavar='IP:PUERTO',
+                        help='modo inverso: conectarse a la CLI que escucha '
+                             'en WSL (esquiva el firewall de Windows), '
+                             'p. ej. -c 172.17.130.5:8765')
     args = parser.parse_args()
 
     try:
@@ -134,6 +202,16 @@ def main():
         print('Comprueba el número de COM con: '
               'python -m serial.tools.list_ports -v')
         sys.exit(1)
+
+    if args.conectar:
+        try:
+            modo_inverso(con, args.conectar)
+        finally:
+            try:
+                con.close()
+            except ERRORES_SERIE:
+                pass
+        return
 
     servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     if os.name == 'nt' and hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
