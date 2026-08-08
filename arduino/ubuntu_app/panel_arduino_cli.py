@@ -21,10 +21,16 @@ Uso — modo interactivo (sin argumentos):
     > salir
 
 Opciones:
-    -p / --puerto  puerto serie (por defecto se autodetecta ttyUSB*/ttyACM*)
-    -b / --baudios velocidad (por defecto 9600)
-    -e / --espera  segundos de espera tras abrir el puerto (el Arduino se
-                   reinicia al abrirlo; por defecto 2.0)
+    -p / --puerto  puerto serie; por defecto se autodetecta. Acepta:
+                     /dev/ttyUSB0            (Linux / WSL2 con usbipd)
+                     /dev/ttyS3              (WSL1: COM3 de Windows)
+                     COM3                    (Windows nativo)
+                     socket://<ip>:8765      (puente puente_com_tcp.py)
+    -b / --baudios velocidad (por defecto 9600; con socket:// la fija el
+                   puente, no esta opción)
+    -e / --espera  segundos de espera tras abrir el puerto (por defecto 2.0
+                   en serie directa, porque el Arduino se reinicia al
+                   abrirla; 0.5 con socket://, donde no se reinicia)
 
 Requisitos: sudo apt install python3-serial   (o: pip install pyserial)
 """
@@ -57,15 +63,28 @@ AYUDA_INTERACTIVO = """Comandos disponibles:
 
 
 def puertos_disponibles():
-    """Puertos serie candidatos. En WSL2 los USB aparecen como /dev/ttyUSB*
-    tras engancharlos con usbipd; en WSL1 los COM de Windows son /dev/ttyS*."""
+    """Puertos serie candidatos.
+
+    - Linux normal / WSL2 con usbipd: /dev/ttyUSB* o /dev/ttyACM*
+    - WSL1: los COM de Windows son /dev/ttyS* (indícalo con -p)
+    - Windows nativo: COM3, COM4, ... (este script también funciona ahí)
+    """
     puertos = []
     if list_ports is not None:
-        puertos = [p.device for p in list_ports.comports()
-                   if 'ttyUSB' in p.device or 'ttyACM' in p.device]
-    if not puertos:
+        if sys.platform.startswith('win'):
+            # Prioriza dispositivos USB reales (el Arduino tiene VID);
+            # los COM de Bluetooth no lo tienen y abrirse pueden tardar
+            # 10 s en fallar.
+            todos = list(list_ports.comports())
+            usb = [p.device for p in todos if p.vid is not None]
+            puertos = usb or [p.device for p in todos]
+        else:
+            puertos = [p.device for p in list_ports.comports()
+                       if 'ttyUSB' in p.device or 'ttyACM' in p.device]
+    if not puertos and not sys.platform.startswith('win'):
         puertos = sorted(glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*'))
-    return puertos
+    # Orden natural: COM2 antes que COM10
+    return sorted(puertos, key=lambda d: (len(d), d))
 
 
 def elegir_puerto(explicito):
@@ -73,9 +92,11 @@ def elegir_puerto(explicito):
         return explicito
     puertos = puertos_disponibles()
     if not puertos:
-        print('No se ha encontrado ningún puerto serie (ttyUSB*/ttyACM*).')
+        print('No se ha encontrado ningún puerto serie.')
         print('  - ¿Está el Arduino conectado por USB?')
-        print('  - En WSL2 hay que engancharlo antes desde Windows con usbipd')
+        print('  - En WSL2 hay que engancharlo desde Windows con usbipd, o')
+        print('    usar el puente TCP sin admin: ejecuta puente_com_tcp.py en')
+        print('    Windows y conecta con -p socket://<ip>:8765')
         print('    (mira arduino/ubuntu_app/README.md).')
         print('  - En WSL1 los COM de Windows son /dev/ttyS<n> (COM3 = ttyS3);')
         print('    en ese caso indícalo con -p /dev/ttyS3.')
@@ -91,15 +112,30 @@ def abrir(puerto, baudios, espera):
         print('Falta el módulo pyserial. Instálalo con:')
         print('  sudo apt install python3-serial   (o: pip install pyserial)')
         sys.exit(1)
+    es_url = '://' in puerto
     try:
-        con = serial.Serial(puerto, baudios, timeout=0.5)
-    except serial.SerialException as e:
+        if es_url:
+            # URL de pyserial, p. ej. socket://192.168.1.10:8765
+            # (para el puente COM<->TCP de puente_com_tcp.py desde WSL)
+            con = serial.serial_for_url(puerto, timeout=0.5)
+        else:
+            con = serial.Serial(puerto, baudios, timeout=0.5)
+    except (serial.SerialException, OSError, ValueError) as e:
         print(f'No se pudo abrir {puerto}: {e}')
         if 'ermission' in str(e):
             print('Permisos: añade tu usuario al grupo dialout y reabre la '
                   'terminal:\n  sudo usermod -a -G dialout $USER')
+        if es_url:
+            print('¿Está corriendo puente_com_tcp.py en Windows y es '
+                  'correcta la IP? (mira el README, sección WSL sin admin)')
         sys.exit(1)
-    # El Arduino se reinicia al abrir el puerto: darle tiempo a arrancar
+    if es_url and baudios != BAUDIOS_DEFECTO:
+        print(f'Aviso: -b {baudios} no viaja por socket://; la velocidad '
+              'la fija el puente (su opción -b).')
+    if espera is None:
+        # Sobre el puente TCP el Arduino NO se reinicia al conectar (solo
+        # cuando el puente abre el COM), asi que no hay que esperar arranque.
+        espera = 0.5 if es_url else ESPERA_DEFECTO
     time.sleep(espera)
     con.reset_input_buffer()
     return con
@@ -124,7 +160,11 @@ def escuchar(con, segundos):
     """Lee e imprime respuestas durante un tiempo dado."""
     limite = time.monotonic() + segundos
     while time.monotonic() < limite:
-        cruda = con.readline()
+        try:
+            cruda = con.readline()
+        except (serial.SerialException, OSError):
+            print('  (se perdió la conexión con el Arduino/puente)')
+            return
         if not cruda:
             continue
         texto = interpretar(cruda.decode('utf-8', errors='replace').strip())
@@ -133,7 +173,11 @@ def escuchar(con, segundos):
 
 
 def enviar(con, comando, escucha=1.0):
-    con.write((comando + '\n').encode('ascii'))
+    try:
+        con.write((comando + '\n').encode('ascii'))
+    except (serial.SerialException, OSError):
+        print('  No se pudo enviar (¿se perdió la conexión?)')
+        return
     escuchar(con, escucha)
 
 
@@ -141,7 +185,11 @@ def modo_monitor(con):
     print('Monitor en vivo — Ctrl+C para salir.')
     try:
         while True:
-            cruda = con.readline()
+            try:
+                cruda = con.readline()
+            except (serial.SerialException, OSError):
+                print('Se perdió la conexión con el Arduino/puente.')
+                return
             if not cruda:
                 continue
             texto = interpretar(cruda.decode('utf-8', errors='replace').strip())
@@ -210,8 +258,10 @@ def main():
     parser.add_argument('-p', '--puerto', help='puerto serie (autodetectado '
                         'si se omite)')
     parser.add_argument('-b', '--baudios', type=int, default=BAUDIOS_DEFECTO)
-    parser.add_argument('-e', '--espera', type=float, default=ESPERA_DEFECTO,
-                        help='segundos de espera tras abrir el puerto')
+    parser.add_argument('-e', '--espera', type=float, default=None,
+                        help='segundos de espera tras abrir el puerto '
+                             '(por defecto 2.0 en serie directa, 0.5 con '
+                             'socket:// porque el Arduino no se reinicia)')
     parser.add_argument('orden', nargs='?',
                         choices=['puertos', 'estado', 'led', 'servo',
                                  'centrar', 'monitor', 'crudo'],
@@ -226,7 +276,7 @@ def main():
             for p in puertos:
                 print(p)
         else:
-            print('Ningún puerto ttyUSB*/ttyACM* encontrado.')
+            print('Ningún puerto serie encontrado.')
         return
 
     puerto = elegir_puerto(args.puerto)

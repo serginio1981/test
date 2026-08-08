@@ -101,11 +101,77 @@ porque el Arduino se reinicia al conectar (ajustable con `-e`).
 
 ## Usar el Arduino desde WSL (Windows)
 
-WSL no ve los USB de Windows directamente; depende de la versión:
+WSL no ve los USB de Windows directamente. Comprueba primero tu versión
+con `wsl -l -v` en PowerShell; el camino depende de ella y de si tienes
+permisos de administrador en Windows.
 
-### WSL2 (lo habitual hoy)
+### WSL2 sin permisos de administrador (puente TCP)
 
-Hay que "enganchar" el USB del Arduino a WSL con
+usbipd-win **requiere administrador** (instala un servicio y un driver) y
+no tiene versión portable. La alternativa: `puente_com_tcp.py`, un script
+que corre en Windows con un Python normal, abre el COM del Arduino y lo
+sirve por TCP para que la CLI de WSL se conecte por red.
+
+1. En Windows, instala Python desde la **Microsoft Store** (no pide admin)
+   y luego, en PowerShell:
+
+   ```powershell
+   pip install --user pyserial
+   python -m serial.tools.list_ports -v   # localiza el COM del Arduino
+   python puente_com_tcp.py COM3
+   ```
+
+   El COM también se ve en el Administrador de dispositivos (`Win+R` →
+   `devmgmt.msc`, se abre sin admin) en **"Puertos (COM y LPT)"** — el MEGA
+   clon aparece como *USB-SERIAL CH340*. Si Windows muestra un aviso del
+   firewall al arrancar el puente y no puedes aceptarlo (pide admin),
+   ciérralo y usa el modo *mirrored* de más abajo.
+
+2. En WSL/Ubuntu, averigua la IP de Windows y conéctate:
+
+   ```bash
+   ip route show default | awk '{print $3}'      # IP de Windows vista desde WSL2
+   python3 panel_arduino_cli.py -p socket://<esa-IP>:8765 estado
+   ```
+
+> La velocidad (baudios) la fija el **puente** con su opción `-b`; el `-b`
+> de la CLI no viaja por `socket://`.
+
+Si la conexión se queda colgada, casi seguro es el **firewall de Windows**
+bloqueando la entrada desde WSL. Sin admin no puedes abrir el puerto en el
+firewall, pero hay un rodeo sin admin: el modo **mirrored** de WSL, en el
+que Windows y WSL comparten localhost y el firewall no interviene.
+Requiere **Windows 11 22H2+ y WSL 2.0+**; actualiza y comprueba primero
+(ninguno de los dos pide admin):
+
+```powershell
+wsl --update
+wsl --version     # WSL debe ser 2.0.0 o superior
+```
+
+Después crea el archivo `%UserProfile%\.wslconfig` con:
+
+```ini
+[wsl2]
+networkingMode=mirrored
+```
+
+Ejecuta `wsl --shutdown`, vuelve a abrir Ubuntu, lanza el puente con
+`python puente_com_tcp.py COM3 -d 127.0.0.1` y conecta desde WSL a
+`socket://127.0.0.1:8765`.
+
+> Si al arrancar WSL avisa de que *mirrored no está soportado y vuelve a
+> NAT*, tu Windows no lo admite: en ese caso `socket://127.0.0.1` dará
+> «connection refused» — vuelve a lanzar el puente sin `-d` y usa la IP de
+> Windows, o pasa al Plan B.
+
+**Plan B sin WSL:** la CLI también funciona directamente en Windows con el
+Python de la Store (`pip install --user pyserial` y
+`python panel_arduino_cli.py -p COM3`), sin puente ni WSL.
+
+### WSL2 con permisos de administrador (usbipd)
+
+Es la vía "oficial": engancha el USB del Arduino a WSL con
 [usbipd-win](https://github.com/dorssel/usbipd-win). En **PowerShell de
 Windows como administrador**:
 
